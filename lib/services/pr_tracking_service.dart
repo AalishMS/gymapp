@@ -1,0 +1,61 @@
+import '../models/exercise.dart';
+import '../services/hive_service.dart';
+
+class PRResult {
+  final String exerciseName;
+  final double previousPR;
+  final double newPR;
+  final int reps;
+  final bool isWeightPR;
+  final bool isRepsPR;
+
+  PRResult({
+    required this.exerciseName,
+    required this.previousPR,
+    required this.newPR,
+    required this.reps,
+    this.isWeightPR = true,
+    this.isRepsPR = false,
+  });
+}
+
+class PRTrackingService {
+  static List<PRResult> checkForNewPRs(List<Exercise> exercises) {
+    final results = <PRResult>[];
+
+    for (var exercise in exercises) {
+      if (exercise.sets.isEmpty) continue;
+
+      for (var set in exercise.sets) {
+        final currentPR = HiveService.getExercisePR(exercise.name);
+
+        if (set.weight > currentPR) {
+          results.add(PRResult(
+            exerciseName: exercise.name,
+            previousPR: currentPR,
+            newPR: set.weight,
+            reps: set.reps,
+            isWeightPR: true,
+          ));
+        }
+      }
+    }
+
+    return results;
+  }
+
+  static String formatPRSummary(List<PRResult> prs) {
+    if (prs.isEmpty) return '';
+
+    final buffer = StringBuffer('🎉 New Personal Records!\n\n');
+    for (var pr in prs) {
+      if (pr.isWeightPR) {
+        buffer.writeln('${pr.exerciseName}: ${pr.newPR}kg');
+        if (pr.previousPR > 0) {
+          buffer.writeln('  (Previous PR: ${pr.previousPR}kg)');
+        }
+      }
+    }
+    return buffer.toString();
+  }
+}
