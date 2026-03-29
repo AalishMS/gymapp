@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'providers/workout_plan_provider.dart';
 import 'providers/workout_session_provider.dart';
@@ -6,6 +7,7 @@ import 'providers/progression_provider.dart';
 import 'providers/settings_provider.dart';
 import 'services/hive_service.dart';
 import 'screens/home_screen.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,24 +62,27 @@ class _MyAppState extends State<MyApp> {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(
-          backgroundColor: Colors.indigo,
+          backgroundColor: const Color(0xFF0D0D0D),
           body: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.fitness_center, size: 80, color: Colors.white),
-                const SizedBox(height: 24),
-                const Text(
-                  'Gym Tracker',
-                  style: TextStyle(
+                Text(
+                  '> OPENGYM',
+                  style: GoogleFonts.jetBrainsMono(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: const Color(0xFF00FF41),
                   ),
                 ),
                 const SizedBox(height: 32),
-                const CircularProgressIndicator(
-                  color: Colors.white,
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: const Color(0xFF00FF41),
+                  ),
                 ),
               ],
             ),
@@ -93,30 +98,16 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: _progressionProvider),
         ChangeNotifierProvider.value(value: _settingsProvider),
       ],
-      child: Builder(
-        builder: (context) {
-          final settings = context.watch<SettingsProvider>();
-          final seedColor = settings.getAccentSeed();
-          final themeMode = settings.themeMode;
+      child: Consumer<SettingsProvider>(
+        builder: (context, settings, child) {
+          final accentColor = settings.accentColor;
 
           return MaterialApp(
-            title: 'Gym Tracker',
+            title: 'OpenGym',
             debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-              useMaterial3: true,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: seedColor,
-                brightness: Brightness.light,
-              ),
-            ),
-            darkTheme: ThemeData(
-              useMaterial3: true,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: seedColor,
-                brightness: Brightness.dark,
-              ),
-            ),
-            themeMode: themeMode,
+            theme: buildTheme(accentColor),
+            darkTheme: buildTheme(accentColor),
+            themeMode: ThemeMode.dark,
             home: const HomeScreen(),
           );
         },

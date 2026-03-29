@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/workout_plan_provider.dart';
+import '../providers/settings_provider.dart';
 import '../models/workout_plan.dart';
 import '../models/exercise_template.dart';
 import '../data/exercise_library.dart';
 import '../services/hive_service.dart';
+import '../theme/app_theme.dart';
 
 class EditPlanScreen extends StatefulWidget {
   final WorkoutPlan plan;
@@ -48,6 +51,7 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
   }
 
   void _addExercise() {
+    final accent = context.read<SettingsProvider>().accentColor;
     final setsController = TextEditingController(text: '3');
     String? selectedCategory;
     String? selectedExercise;
@@ -57,16 +61,31 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Add Exercise'),
-              content: SingleChildScrollView(
+            return Dialog(
+              backgroundColor: terminalSurface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.zero,
+                side: const BorderSide(color: terminalBorder, width: 1),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Select Category',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    Text(
+                      '> ADD EXERCISE',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: accent,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'SELECT CATEGORY',
+                      style: GoogleFonts.jetBrainsMono(
+                          fontSize: 10, color: terminalTextSecondary),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
@@ -75,11 +94,13 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
-                      hint: const Text('Choose category'),
+                      hint: Text('Choose category',
+                          style: GoogleFonts.jetBrainsMono(fontSize: 12)),
                       items: ExerciseLibrary.categoryNames.map((category) {
                         return DropdownMenuItem(
                           value: category,
-                          child: Text(category),
+                          child: Text(category,
+                              style: GoogleFonts.jetBrainsMono(fontSize: 12)),
                         );
                       }).toList(),
                       onChanged: (value) {
@@ -91,9 +112,10 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                     ),
                     if (selectedCategory != null) ...[
                       const SizedBox(height: 16),
-                      const Text(
-                        'Select Exercise',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      Text(
+                        'SELECT EXERCISE',
+                        style: GoogleFonts.jetBrainsMono(
+                            fontSize: 10, color: terminalTextSecondary),
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
@@ -102,13 +124,15 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                           border: OutlineInputBorder(),
                           isDense: true,
                         ),
-                        hint: const Text('Choose exercise'),
+                        hint: Text('Choose exercise',
+                            style: GoogleFonts.jetBrainsMono(fontSize: 12)),
                         items: ExerciseLibrary
                             .exercisesByCategory[selectedCategory]!
                             .map((exercise) {
                           return DropdownMenuItem(
                             value: exercise,
-                            child: Text(exercise),
+                            child: Text(exercise,
+                                style: GoogleFonts.jetBrainsMono(fontSize: 12)),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -119,9 +143,10 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                       ),
                     ],
                     const SizedBox(height: 16),
-                    const Text(
-                      'Or enter custom exercise',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    Text(
+                      'OR ENTER CUSTOM EXERCISE',
+                      style: GoogleFonts.jetBrainsMono(
+                          fontSize: 10, color: terminalTextSecondary),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -149,37 +174,52 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                       ),
                       keyboardType: TextInputType.number,
                     ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('[CANCEL]',
+                              style: GoogleFonts.jetBrainsMono(
+                                  color: terminalTextSecondary)),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            final name = selectedExercise;
+                            if (name == null || name.trim().isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      '> Please select or enter an exercise',
+                                      style: GoogleFonts.jetBrainsMono()),
+                                  backgroundColor: terminalError,
+                                ),
+                              );
+                              return;
+                            }
+
+                            setState(() {
+                              _exercises.add(ExerciseTemplate(
+                                name: name.trim(),
+                                sets: int.tryParse(setsController.text) ?? 3,
+                              ));
+                            });
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: accent,
+                            foregroundColor: Colors.black,
+                          ),
+                          child: Text('[ ADD ]',
+                              style: GoogleFonts.jetBrainsMono()),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final name = selectedExercise;
-                    if (name == null || name.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content:
-                                Text('Please select or enter an exercise')),
-                      );
-                      return;
-                    }
-
-                    setState(() {
-                      _exercises.add(ExerciseTemplate(
-                        name: name.trim(),
-                        sets: int.tryParse(setsController.text) ?? 3,
-                      ));
-                    });
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Add'),
-                ),
-              ],
             );
           },
         );
@@ -190,14 +230,22 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
   void _savePlan() {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Plan name cannot be empty')),
+        SnackBar(
+          content: Text('> Plan name cannot be empty',
+              style: GoogleFonts.jetBrainsMono()),
+          backgroundColor: terminalError,
+        ),
       );
       return;
     }
 
     if (_exercises.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add at least one exercise')),
+        SnackBar(
+          content: Text('> Add at least one exercise',
+              style: GoogleFonts.jetBrainsMono()),
+          backgroundColor: terminalError,
+        ),
       );
       return;
     }
@@ -212,80 +260,179 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final accent = context.watch<SettingsProvider>().accentColor;
+
     return Scaffold(
+      backgroundColor: terminalBackground,
       appBar: AppBar(
-        title: const Text('Edit Workout Plan'),
+        backgroundColor: terminalSurface,
+        title: Text(
+          '> EDIT PLAN',
+          style: GoogleFonts.jetBrainsMono(
+              fontSize: 16, fontWeight: FontWeight.bold, color: accent),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: accent),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _savePlan,
+          InkWell(
+            onTap: _savePlan,
+            splashColor: accent.withValues(alpha: 0.2),
+            highlightColor: accent.withValues(alpha: 0.1),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              child: Text('[ SAVE ]',
+                  style: GoogleFonts.jetBrainsMono(color: accent)),
+            ),
           ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(
                 labelText: 'Plan Name',
-                hintText: 'e.g., Push Day',
-                border: OutlineInputBorder(),
+                hintText: 'e.g., PUSH DAY',
               ),
             ),
             const SizedBox(height: 16),
-            const Row(
-              children: [
-                Icon(Icons.info_outline, size: 16, color: Colors.grey),
-                SizedBox(width: 8),
-                Text(
-                  'Tap + to add exercises',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                border: Border.all(color: terminalBorder),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 16, color: terminalTextSecondary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Tap [+ ADD EXERCISE] below to add exercises',
+                    style: GoogleFonts.jetBrainsMono(
+                        fontSize: 12, color: terminalTextSecondary),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
+            const Divider(color: terminalBorder),
             Expanded(
               child: _exercises.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
-                        'No exercises added yet',
-                        style: TextStyle(color: Colors.grey),
+                        '> No exercises added yet',
+                        style: GoogleFonts.jetBrainsMono(
+                            color: terminalTextSecondary),
                       ),
                     )
                   : ListView.builder(
                       itemCount: _exercises.length,
                       itemBuilder: (context, index) {
                         final exercise = _exercises[index];
-                        return Card(
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              child: Text('${index + 1}'),
-                            ),
-                            title: Text(exercise.name),
-                            subtitle: Text(
-                              '${exercise.sets} sets',
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  _exercises.removeAt(index);
-                                });
-                              },
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: terminalSurface,
+                            border: Border.all(color: terminalBorder, width: 1),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: accent),
+                                  ),
+                                  child: Text(
+                                    '[${index + 1}]',
+                                    style: GoogleFonts.jetBrainsMono(
+                                        fontSize: 12, color: accent),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        exercise.name.toUpperCase(),
+                                        style: GoogleFonts.jetBrainsMono(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        '${exercise.sets} SETS',
+                                        style: GoogleFonts.jetBrainsMono(
+                                            fontSize: 10,
+                                            color: terminalTextSecondary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _exercises.removeAt(index);
+                                    });
+                                  },
+                                  splashColor:
+                                      terminalError.withValues(alpha: 0.2),
+                                  highlightColor:
+                                      terminalError.withValues(alpha: 0.1),
+                                  child: Text('[DEL]',
+                                      style: GoogleFonts.jetBrainsMono(
+                                          fontSize: 12, color: terminalError)),
+                                ),
+                              ],
                             ),
                           ),
                         );
                       },
                     ),
             ),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: _addExercise,
+              splashColor: accent.withValues(alpha: 0.2),
+              highlightColor: accent.withValues(alpha: 0.1),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: accent, width: 1),
+                ),
+                child: Center(
+                  child: Text(
+                    '[ + ADD EXERCISE ]',
+                    style: GoogleFonts.jetBrainsMono(color: accent),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _savePlan,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: Colors.black,
+                ),
+                child: Text('[ SAVE PLAN ]',
+                    style:
+                        GoogleFonts.jetBrainsMono(fontWeight: FontWeight.bold)),
+              ),
+            ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addExercise,
-        child: const Icon(Icons.add),
       ),
     );
   }

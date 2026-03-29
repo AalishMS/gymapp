@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/workout_session_provider.dart';
 import '../providers/settings_provider.dart';
@@ -6,33 +7,50 @@ import '../models/workout_session.dart';
 import '../models/exercise.dart';
 import '../models/set.dart' as gym;
 import '../services/pr_tracking_service.dart';
+import '../theme/app_theme.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final accent = context.watch<SettingsProvider>().accentColor;
+
     return Scaffold(
+      backgroundColor: terminalBackground,
       appBar: AppBar(
-        title: const Text('Workout History'),
+        backgroundColor: terminalSurface,
+        title: Text(
+          '> WORKOUT HISTORY',
+          style: GoogleFonts.jetBrainsMono(
+              fontSize: 16, fontWeight: FontWeight.bold, color: accent),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: accent),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Consumer<WorkoutSessionProvider>(
         builder: (context, provider, child) {
           if (provider.sessions.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.history, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
                   Text(
-                    'No workout history yet',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                    '> NO SESSIONS FOUND',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 16,
+                      color: terminalTextSecondary,
+                    ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'Complete a workout to see it here',
-                    style: TextStyle(color: Colors.grey),
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 12,
+                      color: terminalTextSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -40,7 +58,7 @@ class HistoryScreen extends StatelessWidget {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(8),
             itemCount: provider.sessions.length,
             itemBuilder: (context, index) {
               final session = provider.sessions[index];
@@ -50,24 +68,60 @@ class HistoryScreen extends StatelessWidget {
                 onDelete: () {
                   showDialog(
                     context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Delete Workout'),
-                      content: const Text('Are you sure?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Cancel'),
+                    builder: (ctx) => Dialog(
+                      backgroundColor: terminalSurface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero,
+                        side: const BorderSide(color: terminalBorder, width: 1),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '> DELETE WORKOUT?',
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: terminalError,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'This will permanently delete this workout session.',
+                              style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 12, color: terminalTextSecondary),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: Text('[CANCEL]',
+                                      style: GoogleFonts.jetBrainsMono(
+                                          color: terminalTextSecondary)),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    provider.deleteSession(index);
+                                    Navigator.pop(ctx);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: terminalError,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: Text('[DELETE]',
+                                      style: GoogleFonts.jetBrainsMono()),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        ElevatedButton(
-                          onPressed: () {
-                            provider.deleteSession(index);
-                            Navigator.pop(ctx);
-                          },
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red),
-                          child: const Text('Delete'),
-                        ),
-                      ],
+                      ),
                     ),
                   );
                 },
@@ -116,87 +170,10 @@ class _SessionCardState extends State<_SessionCard> {
     final session = widget.session;
     final prs = PRTrackingService.checkForNewPRs(session.exercises);
     final hasPR = prs.isNotEmpty;
-    final settings = context.watch<SettingsProvider>();
-    final accentColor = settings.accentColor;
+    final accent = context.watch<SettingsProvider>().accentColor;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        children: [
-          ListTile(
-            leading: CircleAvatar(
-              backgroundColor:
-                  hasPR ? Colors.amber.withValues(alpha: 0.2) : null,
-              child: Icon(
-                Icons.fitness_center,
-                color: hasPR ? Colors.amber[700] : null,
-              ),
-            ),
-            title: Row(
-              children: [
-                Expanded(child: Text(session.planName)),
-                if (hasPR)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.emoji_events,
-                            size: 12, color: Colors.amber[700]),
-                        const SizedBox(width: 2),
-                        Text(
-                          'PR',
-                          style:
-                              TextStyle(fontSize: 10, color: Colors.amber[700]),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-            subtitle: Text(
-              'Week ${session.weekNumber} • ${session.date.day}/${session.date.month}/${session.date.year} • ${session.exercises.length} exercises',
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.edit, size: 20, color: accentColor),
-                  onPressed: widget.onEdit,
-                  tooltip: 'Edit',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                  onPressed: widget.onDelete,
-                  tooltip: 'Delete',
-                ),
-                IconButton(
-                  icon:
-                      Icon(_isExpanded ? Icons.expand_less : Icons.expand_more),
-                  onPressed: () {
-                    setState(() {
-                      _isExpanded = !_isExpanded;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          if (_isExpanded) _buildExpandedContent(session),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpandedContent(WorkoutSession session) {
     int totalSets = 0;
     int totalVolume = 0;
-
     for (var exercise in session.exercises) {
       totalSets += exercise.sets.length;
       for (var set in exercise.sets) {
@@ -204,54 +181,124 @@ class _SessionCardState extends State<_SessionCard> {
       }
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: terminalSurface,
+        border: Border.all(color: terminalBorder, width: 1),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () {
+              setState(() {
+                _isExpanded = !_isExpanded;
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: accent),
+                        ),
+                        child: Text(
+                          '${session.date.day}/${session.date.month}/${session.date.year}',
+                          style: GoogleFonts.jetBrainsMono(
+                              fontSize: 10, color: accent),
+                        ),
+                      ),
+                      if (hasPR) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.amber,
+                          ),
+                          child: Text(
+                            '[PR]',
+                            style: GoogleFonts.jetBrainsMono(
+                                fontSize: 10, color: Colors.black),
+                          ),
+                        ),
+                      ],
+                      const Spacer(),
+                      InkWell(
+                        onTap: widget.onEdit,
+                        splashColor: accent.withValues(alpha: 0.2),
+                        highlightColor: accent.withValues(alpha: 0.1),
+                        child: Text('[EDIT]',
+                            style: GoogleFonts.jetBrainsMono(
+                                fontSize: 10, color: accent)),
+                      ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: widget.onDelete,
+                        splashColor: terminalError.withValues(alpha: 0.2),
+                        highlightColor: terminalError.withValues(alpha: 0.1),
+                        child: Text('[DEL]',
+                            style: GoogleFonts.jetBrainsMono(
+                                fontSize: 10, color: terminalError)),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        _isExpanded ? Icons.expand_less : Icons.expand_more,
+                        color: terminalTextSecondary,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    session.planName.toUpperCase(),
+                    style: GoogleFonts.jetBrainsMono(
+                        fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'WEEK ${session.weekNumber}  •  ${session.exercises.length} EXERCISES  •  $totalSets SETS  •  ${totalVolume}KG',
+                    style: GoogleFonts.jetBrainsMono(
+                        fontSize: 10, color: terminalTextSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_isExpanded) _buildExpandedContent(session, accent),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandedContent(WorkoutSession session, Color accent) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: terminalBorder)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _StatBadge(label: 'Sets', value: '$totalSets'),
-              _StatBadge(label: 'Volume', value: '${totalVolume}kg'),
-            ],
-          ),
-          const Divider(height: 24),
-          ...session.exercises
-              .map((exercise) => _ExerciseSection(exercise: exercise)),
+          ...session.exercises.map((exercise) =>
+              _ExerciseSection(exercise: exercise, accent: accent)),
         ],
       ),
     );
   }
 }
 
-class _StatBadge extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _StatBadge({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-      ],
-    );
-  }
-}
-
 class _ExerciseSection extends StatelessWidget {
   final Exercise exercise;
+  final Color accent;
 
-  const _ExerciseSection({required this.exercise});
+  const _ExerciseSection({required this.exercise, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -264,12 +311,15 @@ class _ExerciseSection extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  exercise.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  exercise.name.toUpperCase(),
+                  style: GoogleFonts.jetBrainsMono(
+                      fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ),
               if (exercise.note != null)
-                const Icon(Icons.note, size: 14, color: Colors.amber),
+                Text('[NOTE]',
+                    style:
+                        GoogleFonts.jetBrainsMono(fontSize: 10, color: accent)),
             ],
           ),
           if (exercise.note != null)
@@ -277,7 +327,8 @@ class _ExerciseSection extends StatelessWidget {
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 exercise.note!,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                style: GoogleFonts.jetBrainsMono(
+                    fontSize: 10, color: terminalTextSecondary),
               ),
             ),
           const SizedBox(height: 8),
@@ -285,17 +336,18 @@ class _ExerciseSection extends StatelessWidget {
             final setIndex = entry.key;
             final set = entry.value;
             return Padding(
-              padding: const EdgeInsets.only(left: 16, bottom: 4),
+              padding: const EdgeInsets.only(left: 8, bottom: 2),
               child: Row(
                 children: [
                   Text(
-                    'Set ${setIndex + 1}:',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    'SET ${setIndex + 1}:',
+                    style: GoogleFonts.jetBrainsMono(
+                        fontSize: 10, color: terminalTextSecondary),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '${set.weight}kg x ${set.reps}',
-                    style: const TextStyle(fontSize: 12),
+                    '${set.weight}KG x ${set.reps}REPS',
+                    style: GoogleFonts.jetBrainsMono(fontSize: 10),
                   ),
                   if (set.rpe != null) ...[
                     const SizedBox(width: 8),
@@ -303,19 +355,13 @@ class _ExerciseSection extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
-                        color: _getRpeColor(set.rpe!).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: terminalBorder),
                       ),
                       child: Text(
                         'RPE ${set.rpe}',
-                        style: TextStyle(
-                            fontSize: 10, color: _getRpeColor(set.rpe!)),
+                        style: GoogleFonts.jetBrainsMono(fontSize: 8),
                       ),
                     ),
-                  ],
-                  if (set.note != null) ...[
-                    const SizedBox(width: 4),
-                    const Icon(Icons.note, size: 12, color: Colors.grey),
                   ],
                 ],
               ),
@@ -324,13 +370,6 @@ class _ExerciseSection extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Color _getRpeColor(int rpe) {
-    if (rpe <= 3) return Colors.green;
-    if (rpe <= 6) return Colors.yellow;
-    if (rpe <= 8) return Colors.orange;
-    return Colors.red;
   }
 }
 
@@ -380,8 +419,8 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
         .updateSession(widget.sessionIndex, _session);
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Workout updated!'),
+      SnackBar(
+        content: Text('> Workout updated!', style: GoogleFonts.jetBrainsMono()),
         backgroundColor: Colors.green,
       ),
     );
@@ -389,15 +428,28 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
-    final accentColor = settings.accentColor;
+    final accent = context.watch<SettingsProvider>().accentColor;
     return Scaffold(
+      backgroundColor: terminalBackground,
       appBar: AppBar(
-        title: const Text('Edit Workout'),
+        backgroundColor: terminalSurface,
+        title: Text(
+          '> EDIT WORKOUT',
+          style: GoogleFonts.jetBrainsMono(
+              fontSize: 16, fontWeight: FontWeight.bold, color: accent),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: accent),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _save,
+          InkWell(
+            onTap: _save,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              child: Text('[ SAVE ]',
+                  style: GoogleFonts.jetBrainsMono(color: accent)),
+            ),
           ),
         ],
       ),
@@ -412,16 +464,21 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Exercises',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          Text(
+            'EXERCISES',
+            style: GoogleFonts.jetBrainsMono(
+                fontSize: 12, fontWeight: FontWeight.bold, color: accent),
           ),
           const SizedBox(height: 8),
           ..._session.exercises.asMap().entries.map((entry) {
             final index = entry.key;
             final exercise = entry.value;
-            return Card(
+            return Container(
               margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: terminalSurface,
+                border: Border.all(color: terminalBorder, width: 1),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
@@ -429,50 +486,85 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                   children: [
                     Row(
                       children: [
-                        Expanded(
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: accent),
+                          ),
                           child: Text(
-                            exercise.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            '[${index + 1}]',
+                            style: GoogleFonts.jetBrainsMono(
+                                fontSize: 10, color: accent),
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete,
-                              color: Colors.red, size: 20),
-                          onPressed: () => _removeExercise(index),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            exercise.name.toUpperCase(),
+                            style: GoogleFonts.jetBrainsMono(
+                                fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => _removeExercise(index),
+                          splashColor: terminalError.withValues(alpha: 0.2),
+                          highlightColor: terminalError.withValues(alpha: 0.1),
+                          child: Text('[DEL]',
+                              style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 10, color: terminalError)),
                         ),
                       ],
                     ),
                     if (exercise.note != null)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.only(top: 8),
                         child: Text(
                           exercise.note!,
-                          style:
-                              const TextStyle(fontSize: 11, color: Colors.grey),
+                          style: GoogleFonts.jetBrainsMono(
+                              fontSize: 10, color: terminalTextSecondary),
                         ),
                       ),
+                    const SizedBox(height: 8),
                     ...exercise.sets.asMap().entries.map((setEntry) {
                       final setIndex = setEntry.key;
                       final set = setEntry.value;
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                        title: Text('${set.weight}kg x ${set.reps} reps'),
-                        subtitle: set.note != null
-                            ? Text(set.note!,
-                                style: const TextStyle(fontSize: 10))
-                            : null,
-                        trailing: IconButton(
-                          icon: Icon(Icons.edit, size: 16, color: accentColor),
-                          onPressed: () =>
-                              _showEditSetDialog(index, setIndex, set),
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 8, bottom: 4),
+                        child: Row(
+                          children: [
+                            Text(
+                              'SET ${setIndex + 1}:',
+                              style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 10, color: terminalTextSecondary),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${set.weight}KG x ${set.reps}REPS',
+                              style: GoogleFonts.jetBrainsMono(fontSize: 10),
+                            ),
+                            const Spacer(),
+                            InkWell(
+                              onTap: () =>
+                                  _showEditSetDialog(index, setIndex, set),
+                              splashColor: accent.withValues(alpha: 0.2),
+                              highlightColor: accent.withValues(alpha: 0.1),
+                              child: Text('[EDIT]',
+                                  style: GoogleFonts.jetBrainsMono(
+                                      fontSize: 10, color: accent)),
+                            ),
+                          ],
                         ),
                       );
                     }),
-                    TextButton.icon(
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Add Set'),
-                      onPressed: () => _showAddSetDialog(index, exercise),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () => _showAddSetDialog(index, exercise),
+                      splashColor: accent.withValues(alpha: 0.2),
+                      highlightColor: accent.withValues(alpha: 0.1),
+                      child: Text('[ + ADD SET ]',
+                          style: GoogleFonts.jetBrainsMono(
+                              fontSize: 10, color: accent)),
                     ),
                   ],
                 ),
@@ -485,139 +577,202 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
   }
 
   void _showAddSetDialog(int exerciseIndex, Exercise exercise) {
+    final accent = context.read<SettingsProvider>().accentColor;
     final weightController = TextEditingController();
     final repsController = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add Set'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: weightController,
-              decoration: const InputDecoration(labelText: 'Weight (kg)'),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: repsController,
-              decoration: const InputDecoration(labelText: 'Reps'),
-              keyboardType: TextInputType.number,
-            ),
-          ],
+      builder: (ctx) => Dialog(
+        backgroundColor: terminalSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: const BorderSide(color: terminalBorder, width: 1),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '> ADD SET',
+                style: GoogleFonts.jetBrainsMono(
+                    fontSize: 16, fontWeight: FontWeight.bold, color: accent),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: weightController,
+                decoration: const InputDecoration(labelText: 'Weight (kg)'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: repsController,
+                decoration: const InputDecoration(labelText: 'Reps'),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text('[CANCEL]',
+                        style: GoogleFonts.jetBrainsMono(
+                            color: terminalTextSecondary)),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      final weight = double.tryParse(weightController.text);
+                      final reps = int.tryParse(repsController.text);
+                      if (weight != null && reps != null) {
+                        final newSet = gym.Set(reps: reps, weight: weight);
+                        final updatedExercises =
+                            List<Exercise>.from(_session.exercises);
+                        updatedExercises[exerciseIndex] = Exercise(
+                          name: exercise.name,
+                          sets: [...exercise.sets, newSet],
+                          note: exercise.note,
+                        );
+                        setState(() {
+                          _session =
+                              _session.copyWith(exercises: updatedExercises);
+                        });
+                        Navigator.pop(ctx);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accent,
+                      foregroundColor: Colors.black,
+                    ),
+                    child: Text('[ADD]', style: GoogleFonts.jetBrainsMono()),
+                  ),
+                ],
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              final weight = double.tryParse(weightController.text);
-              final reps = int.tryParse(repsController.text);
-              if (weight != null && reps != null) {
-                final newSet = gym.Set(reps: reps, weight: weight);
-                final updatedExercises =
-                    List<Exercise>.from(_session.exercises);
-                updatedExercises[exerciseIndex] = Exercise(
-                  name: exercise.name,
-                  sets: [...exercise.sets, newSet],
-                  note: exercise.note,
-                );
-                setState(() {
-                  _session = _session.copyWith(exercises: updatedExercises);
-                });
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   void _showEditSetDialog(int exerciseIndex, int setIndex, gym.Set set) {
+    final accent = context.read<SettingsProvider>().accentColor;
     final weightController = TextEditingController(text: set.weight.toString());
     final repsController = TextEditingController(text: set.reps.toString());
     final noteController = TextEditingController(text: set.note ?? '');
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Set'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: weightController,
-              decoration: const InputDecoration(labelText: 'Weight (kg)'),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: repsController,
-              decoration: const InputDecoration(labelText: 'Reps'),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: noteController,
-              decoration: const InputDecoration(labelText: 'Note'),
-            ),
-          ],
+      builder: (ctx) => Dialog(
+        backgroundColor: terminalSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: const BorderSide(color: terminalBorder, width: 1),
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              final exercises = List<Exercise>.from(_session.exercises);
-              final exercise = exercises[exerciseIndex];
-              final sets = List<gym.Set>.from(exercise.sets)
-                ..removeAt(setIndex);
-              exercises[exerciseIndex] = Exercise(
-                  name: exercise.name, sets: sets, note: exercise.note);
-              setState(() {
-                _session = _session.copyWith(exercises: exercises);
-              });
-              Navigator.pop(ctx);
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '> EDIT SET',
+                style: GoogleFonts.jetBrainsMono(
+                    fontSize: 16, fontWeight: FontWeight.bold, color: accent),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: weightController,
+                decoration: const InputDecoration(labelText: 'Weight (kg)'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: repsController,
+                decoration: const InputDecoration(labelText: 'Reps'),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: noteController,
+                decoration: const InputDecoration(labelText: 'Note'),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      final exercises = List<Exercise>.from(_session.exercises);
+                      final exercise = exercises[exerciseIndex];
+                      final sets = List<gym.Set>.from(exercise.sets)
+                        ..removeAt(setIndex);
+                      exercises[exerciseIndex] = Exercise(
+                          name: exercise.name, sets: sets, note: exercise.note);
+                      setState(() {
+                        _session = _session.copyWith(exercises: exercises);
+                      });
+                      Navigator.pop(ctx);
+                    },
+                    child: Text('[DELETE]',
+                        style: GoogleFonts.jetBrainsMono(color: terminalError)),
+                  ),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text('[CANCEL]',
+                            style: GoogleFonts.jetBrainsMono(
+                                color: terminalTextSecondary)),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          final weight = double.tryParse(weightController.text);
+                          final reps = int.tryParse(repsController.text);
+                          if (weight != null && reps != null) {
+                            final exercises =
+                                List<Exercise>.from(_session.exercises);
+                            final exercise = exercises[exerciseIndex];
+                            final sets = List<gym.Set>.from(exercise.sets);
+                            sets[setIndex] = gym.Set(
+                              reps: reps,
+                              weight: weight,
+                              rpe: set.rpe,
+                              note: noteController.text.isNotEmpty
+                                  ? noteController.text
+                                  : null,
+                            );
+                            exercises[exerciseIndex] = Exercise(
+                                name: exercise.name,
+                                sets: sets,
+                                note: exercise.note);
+                            setState(() {
+                              _session =
+                                  _session.copyWith(exercises: exercises);
+                            });
+                            Navigator.pop(ctx);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: accent,
+                          foregroundColor: Colors.black,
+                        ),
+                        child:
+                            Text('[SAVE]', style: GoogleFonts.jetBrainsMono()),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final weight = double.tryParse(weightController.text);
-              final reps = int.tryParse(repsController.text);
-              if (weight != null && reps != null) {
-                final exercises = List<Exercise>.from(_session.exercises);
-                final exercise = exercises[exerciseIndex];
-                final sets = List<gym.Set>.from(exercise.sets);
-                sets[setIndex] = gym.Set(
-                  reps: reps,
-                  weight: weight,
-                  rpe: set.rpe,
-                  note: noteController.text.isNotEmpty
-                      ? noteController.text
-                      : null,
-                );
-                exercises[exerciseIndex] = Exercise(
-                    name: exercise.name, sets: sets, note: exercise.note);
-                setState(() {
-                  _session = _session.copyWith(exercises: exercises);
-                });
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
+        ),
       ),
     );
   }

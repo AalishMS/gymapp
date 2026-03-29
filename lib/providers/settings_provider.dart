@@ -11,8 +11,9 @@ class SettingsProvider with ChangeNotifier {
   static const String _autoFillKey = 'auto_fill_last';
   static const String _highRefreshRateKey = 'high_refresh_rate';
 
+  static const Color defaultAccent = Color(0xFF00FF41);
   ThemeMode _themeMode = ThemeMode.dark;
-  Color _accentColor = Colors.blue;
+  Color _accentColor = defaultAccent;
   String _weightUnit = 'kg';
   bool _autoFillLast = true;
   bool _highRefreshRate = true;
@@ -25,26 +26,19 @@ class SettingsProvider with ChangeNotifier {
 
   static const List<AccentColorOption> accentColors = [
     AccentColorOption(
-        name: 'Blue', color: Colors.blue, seed: Color(0xFF2196F3)),
+        name: 'MATRIX GREEN',
+        color: Color(0xFF00FF41),
+        seed: Color(0xFF00FF41)),
     AccentColorOption(
-        name: 'Purple', color: Colors.purple, seed: Color(0xFF9C27B0)),
+        name: 'TERMINAL BLUE',
+        color: Color(0xFF00BFFF),
+        seed: Color(0xFF00BFFF)),
     AccentColorOption(
-        name: 'Teal', color: Colors.teal, seed: Color(0xFF009688)),
+        name: 'AMBER', color: Color(0xFFFF6600), seed: Color(0xFFFF6600)),
     AccentColorOption(
-        name: 'Orange', color: Colors.orange, seed: Color(0xFFFF9800)),
+        name: 'MAGENTA', color: Color(0xFFFF00FF), seed: Color(0xFFFF00FF)),
     AccentColorOption(
-        name: 'Pink', color: Colors.pink, seed: Color(0xFFE91E63)),
-    AccentColorOption(
-        name: 'Green', color: Colors.green, seed: Color(0xFF4CAF50)),
-    AccentColorOption(name: 'Red', color: Colors.red, seed: Color(0xFFF44336)),
-    AccentColorOption(
-        name: 'Amber', color: Colors.amber, seed: Color(0xFFFFC107)),
-    AccentColorOption(
-        name: 'Cyan', color: Colors.cyan, seed: Color(0xFF00BCD4)),
-    AccentColorOption(
-        name: 'Indigo', color: Colors.indigo, seed: Color(0xFF3F51B5)),
-    AccentColorOption(
-        name: 'Gray', color: Colors.grey, seed: Color(0xFF607D8B)),
+        name: 'GHOST WHITE', color: Color(0xFFFFFFFF), seed: Color(0xFFFFFFFF)),
   ];
 
   SettingsProvider() {
@@ -58,7 +52,11 @@ class SettingsProvider with ChangeNotifier {
     _themeMode = ThemeMode.values[themeIndex];
 
     final accentColorIndex = prefs.getInt(_accentColorKey) ?? 0;
-    _accentColor = accentColors[accentColorIndex].color;
+    if (accentColorIndex >= 0 && accentColorIndex < accentColors.length) {
+      _accentColor = accentColors[accentColorIndex].color;
+    } else {
+      _accentColor = defaultAccent;
+    }
 
     _weightUnit = prefs.getString(_weightUnitKey) ?? 'kg';
     _autoFillLast = prefs.getBool(_autoFillKey) ?? true;
