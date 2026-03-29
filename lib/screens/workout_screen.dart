@@ -10,6 +10,8 @@ import '../providers/settings_provider.dart';
 import '../services/hive_service.dart';
 import '../services/pr_tracking_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/workout/exercise_card.dart';
+import '../widgets/workout/workout_dialogs.dart';
 
 class WorkoutScreen extends StatefulWidget {
   final WorkoutPlan plan;
@@ -118,64 +120,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   void _showPRDialog(List<PRResult> prs) {
-    final accent = context.read<SettingsProvider>().accentColor;
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: terminalSurface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '> NEW PR DETECTED!',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: accent,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ...prs.map((pr) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(pr.exerciseName,
-                            style: GoogleFonts.jetBrainsMono(
-                                fontWeight: FontWeight.bold)),
-                        Text(
-                          '${pr.newPR}kg (Previous: ${pr.previousPR}kg)',
-                          style: GoogleFonts.jetBrainsMono(
-                              fontSize: 12, color: terminalTextSecondary),
-                        ),
-                      ],
-                    ),
-                  )),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accent,
-                    foregroundColor: Colors.black,
-                  ),
-                  child: Text('[ ACKNOWLEDGE ]',
-                      style: GoogleFonts.jetBrainsMono()),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    WorkoutDialogs.showPRDialog(context, prs);
   }
 
   int get _currentWeek => _weeks[_currentWeekIndex];
@@ -207,7 +152,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               note: s.note,
                             ))
                         .toList(),
-                    note: null,
+                    note: prevExercise.note,
                   ))
               .toList(),
           weekNumber: _currentWeek,
@@ -238,189 +183,54 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   void _addEmptyExercise() {
+    WorkoutDialogs.showAddExerciseDialog(
+      context,
+      onAdd: (name) {
+        final session = _getOrCreateSession();
+        final updatedExercises = List<Exercise>.from(session.exercises);
+        updatedExercises.add(Exercise(name: name, sets: [], note: null));
+        _updateSession(session.copyWith(exercises: updatedExercises));
+        _autoSave();
+      },
+    );
+  }
+
+  void _showExerciseRenameDialog(int exerciseIndex) {
     final session = _getOrCreateSession();
-    final updatedExercises = List<Exercise>.from(session.exercises);
-    updatedExercises.add(Exercise(name: 'New Exercise', sets: [], note: null));
-    _updateSession(session.copyWith(exercises: updatedExercises));
-    _autoSave();
+    final exercise = session.exercises[exerciseIndex];
+    WorkoutDialogs.showRenameExerciseDialog(
+      context,
+      currentName: exercise.name,
+      onRename: (name) {
+        final updatedExercises = List<Exercise>.from(session.exercises);
+        updatedExercises[exerciseIndex] = Exercise(
+          name: name,
+          sets: exercise.sets,
+          note: exercise.note,
+        );
+        _updateSession(session.copyWith(exercises: updatedExercises));
+        _autoSave();
+      },
+    );
   }
 
   void _addSet(int exerciseIndex) {
     final session = _getOrCreateSession();
     final exercise = session.exercises[exerciseIndex];
     final lastSet = _getLastSetForExerciseInPlan(exercise.name);
-    final settings = context.read<SettingsProvider>();
-    final accent = settings.accentColor;
 
-    final weightController = TextEditingController(
-      text: lastSet?.weight.toString() ?? '',
-    );
-    final repsController = TextEditingController(
-      text: lastSet?.reps.toString() ?? '8',
-    );
-    int? selectedRpe = settings.autoFillLast ? lastSet?.rpe : null;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              backgroundColor: terminalSurface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.zero,
-                side: const BorderSide(color: terminalBorder, width: 1),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '> ADD SET',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: accent,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: weightController,
-                      decoration: const InputDecoration(
-                        labelText: 'Weight (kg)',
-                        hintText: 'e.g., 50',
-                      ),
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: repsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Reps',
-                        hintText: 'e.g., 8',
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 16),
-                    Text('RPE (Rate of Perceived Exertion)',
-                        style: GoogleFonts.jetBrainsMono(fontSize: 12)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: List.generate(10, (index) {
-                        final rpe = index + 1;
-                        return InkWell(
-                          onTap: () {
-                            setDialogState(() {
-                              selectedRpe = selectedRpe == rpe ? null : rpe;
-                            });
-                          },
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: selectedRpe == rpe
-                                  ? accent
-                                  : Colors.transparent,
-                              border: Border.all(
-                                color: selectedRpe == rpe
-                                    ? accent
-                                    : terminalBorder,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '$rpe',
-                                style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 12,
-                                  color: selectedRpe == rpe
-                                      ? Colors.black
-                                      : terminalTextPrimary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text('[CANCEL]',
-                              style: GoogleFonts.jetBrainsMono(
-                                  color: terminalTextSecondary)),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () {
-                            final weight =
-                                double.tryParse(weightController.text);
-                            final reps = int.tryParse(repsController.text);
-
-                            if (weight == null || weight < 0) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('> Weight must be >= 0',
-                                      style: GoogleFonts.jetBrainsMono()),
-                                  backgroundColor: terminalError,
-                                ),
-                              );
-                              return;
-                            }
-
-                            if (reps == null || reps <= 0) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('> Reps must be > 0',
-                                      style: GoogleFonts.jetBrainsMono()),
-                                  backgroundColor: terminalError,
-                                ),
-                              );
-                              return;
-                            }
-
-                            final newSet = gym.Set(
-                              reps: reps,
-                              weight: weight,
-                              rpe: selectedRpe,
-                              note: null,
-                            );
-
-                            final updatedExercises =
-                                List<Exercise>.from(session.exercises);
-                            updatedExercises[exerciseIndex] = Exercise(
-                              name: exercise.name,
-                              sets: [...exercise.sets, newSet],
-                              note: exercise.note,
-                            );
-
-                            _updateSession(
-                                session.copyWith(exercises: updatedExercises));
-                            Navigator.pop(context);
-                            _autoSave();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: accent,
-                            foregroundColor: Colors.black,
-                          ),
-                          child: Text('[ ADD ]',
-                              style: GoogleFonts.jetBrainsMono()),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+    WorkoutDialogs.showAddSetDialog(
+      context,
+      lastSet: lastSet,
+      onAdd: (newSet) {
+        final updatedExercises = List<Exercise>.from(session.exercises);
+        updatedExercises[exerciseIndex] = Exercise(
+          name: exercise.name,
+          sets: [...exercise.sets, newSet],
+          note: exercise.note,
         );
+        _updateSession(session.copyWith(exercises: updatedExercises));
+        _autoSave();
       },
     );
   }
@@ -429,199 +239,33 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final session = _getOrCreateSession();
     final exercise = session.exercises[exerciseIndex];
     final set = exercise.sets[setIndex];
-    final settings = context.read<SettingsProvider>();
-    final accent = settings.accentColor;
 
-    final weightController = TextEditingController(text: set.weight.toString());
-    final repsController = TextEditingController(text: set.reps.toString());
-    final noteController = TextEditingController(text: set.note ?? '');
-    int? selectedRpe = set.rpe;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              backgroundColor: terminalSurface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.zero,
-                side: const BorderSide(color: terminalBorder, width: 1),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '> EDIT SET',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: accent,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: weightController,
-                      decoration:
-                          const InputDecoration(labelText: 'Weight (kg)'),
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: repsController,
-                      decoration: const InputDecoration(labelText: 'Reps'),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 16),
-                    Text('RPE', style: GoogleFonts.jetBrainsMono(fontSize: 12)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: List.generate(10, (index) {
-                        final rpe = index + 1;
-                        return InkWell(
-                          onTap: () {
-                            setDialogState(() {
-                              selectedRpe = selectedRpe == rpe ? null : rpe;
-                            });
-                          },
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: selectedRpe == rpe
-                                  ? accent
-                                  : Colors.transparent,
-                              border: Border.all(
-                                color: selectedRpe == rpe
-                                    ? accent
-                                    : terminalBorder,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '$rpe',
-                                style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 12,
-                                  color: selectedRpe == rpe
-                                      ? Colors.black
-                                      : terminalTextPrimary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: noteController,
-                      decoration:
-                          const InputDecoration(labelText: 'Note (optional)'),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                            final updatedSets =
-                                List<gym.Set>.from(exercise.sets)
-                                  ..removeAt(setIndex);
-                            final updatedExercises =
-                                List<Exercise>.from(session.exercises);
-                            updatedExercises[exerciseIndex] = Exercise(
-                              name: exercise.name,
-                              sets: updatedSets,
-                              note: exercise.note,
-                            );
-                            _updateSession(
-                                session.copyWith(exercises: updatedExercises));
-                            Navigator.pop(context);
-                            _autoSave();
-                          },
-                          child: Text('[DELETE]',
-                              style: GoogleFonts.jetBrainsMono(
-                                  color: terminalError)),
-                        ),
-                        Row(
-                          children: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: Text('[CANCEL]',
-                                  style: GoogleFonts.jetBrainsMono(
-                                      color: terminalTextSecondary)),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              onPressed: () {
-                                final weight =
-                                    double.tryParse(weightController.text);
-                                final reps = int.tryParse(repsController.text);
-
-                                if (weight == null ||
-                                    weight < 0 ||
-                                    reps == null ||
-                                    reps <= 0) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('> Invalid values',
-                                          style: GoogleFonts.jetBrainsMono()),
-                                      backgroundColor: terminalError,
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                final updatedSet = gym.Set(
-                                  reps: reps,
-                                  weight: weight,
-                                  rpe: selectedRpe,
-                                  note: noteController.text.isNotEmpty
-                                      ? noteController.text
-                                      : null,
-                                );
-
-                                final updatedSets =
-                                    List<gym.Set>.from(exercise.sets);
-                                updatedSets[setIndex] = updatedSet;
-
-                                final updatedExercises =
-                                    List<Exercise>.from(session.exercises);
-                                updatedExercises[exerciseIndex] = Exercise(
-                                  name: exercise.name,
-                                  sets: updatedSets,
-                                  note: exercise.note,
-                                );
-
-                                _updateSession(session.copyWith(
-                                    exercises: updatedExercises));
-                                Navigator.pop(context);
-                                _autoSave();
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: accent,
-                                foregroundColor: Colors.black,
-                              ),
-                              child: Text('[ SAVE ]',
-                                  style: GoogleFonts.jetBrainsMono()),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+    WorkoutDialogs.showEditSetDialog(
+      context,
+      set: set,
+      onSave: (updatedSet) {
+        final updatedSets = List<gym.Set>.from(exercise.sets);
+        updatedSets[setIndex] = updatedSet;
+        final updatedExercises = List<Exercise>.from(session.exercises);
+        updatedExercises[exerciseIndex] = Exercise(
+          name: exercise.name,
+          sets: updatedSets,
+          note: exercise.note,
         );
+        _updateSession(session.copyWith(exercises: updatedExercises));
+        _autoSave();
+      },
+      onDelete: () {
+        final updatedSets = List<gym.Set>.from(exercise.sets)
+          ..removeAt(setIndex);
+        final updatedExercises = List<Exercise>.from(session.exercises);
+        updatedExercises[exerciseIndex] = Exercise(
+          name: exercise.name,
+          sets: updatedSets,
+          note: exercise.note,
+        );
+        _updateSession(session.copyWith(exercises: updatedExercises));
+        _autoSave();
       },
     );
   }
@@ -629,86 +273,24 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   void _addExerciseNote(int exerciseIndex) {
     final session = _getOrCreateSession();
     final exercise = session.exercises[exerciseIndex];
-    final noteController = TextEditingController(text: exercise.note ?? '');
-    final accent = context.read<SettingsProvider>().accentColor;
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: terminalSurface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.zero,
-            side: const BorderSide(color: terminalBorder, width: 1),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '> NOTE FOR ${exercise.name.toUpperCase()}',
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: accent,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: noteController,
-                  decoration: const InputDecoration(
-                    labelText: 'Note',
-                    hintText: 'Add a note...',
-                  ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text('[CANCEL]',
-                          style: GoogleFonts.jetBrainsMono(
-                              color: terminalTextSecondary)),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {
-                        final updatedExercises =
-                            List<Exercise>.from(session.exercises);
-                        updatedExercises[exerciseIndex] = Exercise(
-                          name: exercise.name,
-                          sets: exercise.sets,
-                          note: noteController.text.isNotEmpty
-                              ? noteController.text
-                              : null,
-                        );
-                        _updateSession(
-                            session.copyWith(exercises: updatedExercises));
-                        Navigator.pop(context);
-                        _autoSave();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: accent,
-                        foregroundColor: Colors.black,
-                      ),
-                      child:
-                          Text('[ SAVE ]', style: GoogleFonts.jetBrainsMono()),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+    WorkoutDialogs.showExerciseNoteDialog(
+      context,
+      currentNote: exercise.note,
+      onSave: (note) {
+        final updatedExercises = List<Exercise>.from(session.exercises);
+        updatedExercises[exerciseIndex] = Exercise(
+          name: exercise.name,
+          sets: exercise.sets,
+          note: note,
         );
+        _updateSession(session.copyWith(exercises: updatedExercises));
+        _autoSave();
       },
     );
   }
 
-  void _quickAddReps(int exerciseIndex, int setIndex) {
+  void _incrementReps(int exerciseIndex, int setIndex) {
     final session = _getOrCreateSession();
     final exercise = session.exercises[exerciseIndex];
     final set = exercise.sets[setIndex];
@@ -732,7 +314,33 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     _autoSave();
   }
 
-  void _quickAddWeight(int exerciseIndex, int setIndex) {
+  void _decrementReps(int exerciseIndex, int setIndex) {
+    final session = _getOrCreateSession();
+    final exercise = session.exercises[exerciseIndex];
+    final set = exercise.sets[setIndex];
+
+    if (set.reps <= 0) return;
+
+    final updatedSets = List<gym.Set>.from(exercise.sets);
+    updatedSets[setIndex] = gym.Set(
+      reps: set.reps - 1,
+      weight: set.weight,
+      rpe: set.rpe,
+      note: set.note,
+    );
+
+    final updatedExercises = List<Exercise>.from(session.exercises);
+    updatedExercises[exerciseIndex] = Exercise(
+      name: exercise.name,
+      sets: updatedSets,
+      note: exercise.note,
+    );
+
+    _updateSession(session.copyWith(exercises: updatedExercises));
+    _autoSave();
+  }
+
+  void _incrementWeight(int exerciseIndex, int setIndex) {
     final session = _getOrCreateSession();
     final exercise = session.exercises[exerciseIndex];
     final set = exercise.sets[setIndex];
@@ -741,6 +349,32 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     updatedSets[setIndex] = gym.Set(
       reps: set.reps,
       weight: set.weight + 2.5,
+      rpe: set.rpe,
+      note: set.note,
+    );
+
+    final updatedExercises = List<Exercise>.from(session.exercises);
+    updatedExercises[exerciseIndex] = Exercise(
+      name: exercise.name,
+      sets: updatedSets,
+      note: exercise.note,
+    );
+
+    _updateSession(session.copyWith(exercises: updatedExercises));
+    _autoSave();
+  }
+
+  void _decrementWeight(int exerciseIndex, int setIndex) {
+    final session = _getOrCreateSession();
+    final exercise = session.exercises[exerciseIndex];
+    final set = exercise.sets[setIndex];
+
+    if (set.weight <= 0) return;
+
+    final updatedSets = List<gym.Set>.from(exercise.sets);
+    updatedSets[setIndex] = gym.Set(
+      reps: set.reps,
+      weight: set.weight - 2.5,
       rpe: set.rpe,
       note: set.note,
     );
@@ -768,125 +402,39 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   void _showWeekOptionsMenu(BuildContext context, int index, int week) {
-    final accent = context.read<SettingsProvider>().accentColor;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: terminalSurface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.edit, color: accent),
-              title: Text('RENAME', style: GoogleFonts.jetBrainsMono()),
-              onTap: () {
-                Navigator.pop(context);
-                _renameWeek(context, index, week);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete, color: terminalError),
-              title: Text('DELETE',
-                  style: GoogleFonts.jetBrainsMono(color: terminalError)),
-              onTap: () {
-                Navigator.pop(context);
-                _deleteWeek(context, index);
-              },
-            ),
-          ],
-        ),
-      ),
+    WorkoutDialogs.showWeekOptionsMenu(
+      context,
+      onRename: () => _renameWeek(index, week),
+      onDelete: () => _deleteWeek(index),
     );
   }
 
-  void _renameWeek(BuildContext context, int index, int week) {
-    final accent = context.read<SettingsProvider>().accentColor;
-    final controller = TextEditingController(text: week.toString());
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: terminalSurface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '> RENAME WEEK',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: accent,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  labelText: 'Week number',
-                  hintText: 'e.g., 1',
-                ),
-                keyboardType: TextInputType.number,
-                autofocus: true,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text('[CANCEL]',
-                        style: GoogleFonts.jetBrainsMono(
-                            color: terminalTextSecondary)),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final newWeek = int.tryParse(controller.text);
-                      if (newWeek != null && newWeek > 0) {
-                        final otherWeeks = List<int>.from(_weeks)
-                          ..removeAt(index);
-                        if (otherWeeks.contains(newWeek)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('> Week number already exists',
-                                  style: GoogleFonts.jetBrainsMono()),
-                              backgroundColor: terminalError,
-                            ),
-                          );
-                          return;
-                        }
-                        setState(() {
-                          _weeks[index] = newWeek;
-                        });
-                        await HiveService.renameSessionWeek(
-                            widget.plan.name, week, newWeek);
-                        if (mounted) Navigator.pop(context);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accent,
-                      foregroundColor: Colors.black,
-                    ),
-                    child:
-                        Text('[ RENAME ]', style: GoogleFonts.jetBrainsMono()),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+  void _renameWeek(int index, int week) {
+    WorkoutDialogs.showRenameWeekDialog(
+      context,
+      currentWeek: week,
+      onRename: (newWeek) async {
+        final otherWeeks = List<int>.from(_weeks)..removeAt(index);
+        if (otherWeeks.contains(newWeek)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('> Week number already exists',
+                  style: GoogleFonts.jetBrainsMono()),
+              backgroundColor: terminalError,
+            ),
+          );
+          return;
+        }
+        setState(() {
+          _weeks[index] = newWeek;
+        });
+        await HiveService.renameSessionWeek(widget.plan.name, week, newWeek);
+      },
     );
   }
 
-  void _deleteWeek(BuildContext context, int index) {
+  void _deleteWeek(int index) async {
+    final week = _weeks[index];
     if (_weeks.length == 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -898,80 +446,22 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       return;
     }
 
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: terminalSurface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '> DELETE WEEK?',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: terminalError,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'This will permanently delete this week\'s workout data.',
-                style: GoogleFonts.jetBrainsMono(
-                    fontSize: 12, color: terminalTextSecondary),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text('[CANCEL]',
-                        style: GoogleFonts.jetBrainsMono(
-                            color: terminalTextSecondary)),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final deletedWeek = _weeks[index];
-                      final deletedIndex = index;
-                      await HiveService.deleteSessionForPlanAndWeek(
-                          widget.plan.name, deletedWeek);
-                      setState(() {
-                        _weeks.removeAt(index);
-                        if (_currentWeekIndex >= _weeks.length) {
-                          _currentWeekIndex = _weeks.length - 1;
-                        } else if (_currentWeekIndex > deletedIndex) {
-                          _currentWeekIndex -= 1;
-                        }
-                      });
-                      if (mounted) Navigator.pop(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: terminalError,
-                      foregroundColor: Colors.white,
-                    ),
-                    child:
-                        Text('[ DELETE ]', style: GoogleFonts.jetBrainsMono()),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    final confirmed = await WorkoutDialogs.showDeleteWeekDialog(
+      context,
+      week: week,
     );
-  }
 
-  @override
-  void dispose() {
-    super.dispose();
+    if (confirmed) {
+      await HiveService.deleteSessionForPlanAndWeek(widget.plan.name, week);
+      setState(() {
+        _weeks.removeAt(index);
+        if (_currentWeekIndex >= _weeks.length) {
+          _currentWeekIndex = _weeks.length - 1;
+        } else if (_currentWeekIndex > index) {
+          _currentWeekIndex -= 1;
+        }
+      });
+    }
   }
 
   @override
@@ -1047,6 +537,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           Expanded(
             child: ReorderableListView.builder(
               padding: const EdgeInsets.all(8),
+              physics: const ClampingScrollPhysics(),
+              cacheExtent: 500,
               itemCount: session.exercises.length + 1,
               onReorder: _reorderExercises,
               proxyDecorator: (child, index, animation) {
@@ -1088,157 +580,24 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     color: terminalSurface,
                     border: Border.all(color: terminalBorder, width: 1),
                   ),
-                  child: _buildExerciseCard(exercise, exerciseIndex, accent),
+                  child: ExerciseCard(
+                    exercise: exercise,
+                    exerciseIndex: exerciseIndex,
+                    accent: accent,
+                    onIncrementReps: _incrementReps,
+                    onDecrementReps: _decrementReps,
+                    onIncrementWeight: _incrementWeight,
+                    onDecrementWeight: _decrementWeight,
+                    onAddSet: (i) => _addSet(i),
+                    onEditSet: (i, setIndex) => _editSet(i, setIndex),
+                    onAddNote: _addExerciseNote,
+                    onRename: _showExerciseRenameDialog,
+                  ),
                 );
               },
             ),
           ),
           _buildWeekNavBar(accent),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExerciseCard(
-      Exercise exercise, int exerciseIndex, Color accent) {
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              InkWell(
-                onLongPress: () => _showWeekOptionsMenu(
-                    context, _currentWeekIndex, _currentWeek),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: accent, width: 1),
-                  ),
-                  child: Text(
-                    '${exerciseIndex + 1}',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 12,
-                      color: accent,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  exercise.name.toUpperCase(),
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (exercise.note != null)
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Icon(Icons.note, size: 16, color: accent),
-                ),
-              InkWell(
-                onTap: () => _addExerciseNote(exerciseIndex),
-                child: Icon(Icons.note_add,
-                    size: 20, color: terminalTextSecondary),
-              ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: () => _addSet(exerciseIndex),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: accent, width: 1),
-                  ),
-                  child: Text('[+]',
-                      style: GoogleFonts.jetBrainsMono(
-                          fontSize: 12, color: accent)),
-                ),
-              ),
-            ],
-          ),
-          if (exercise.sets.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                '> No sets added yet',
-                style: GoogleFonts.jetBrainsMono(
-                    fontSize: 12, color: terminalTextSecondary),
-              ),
-            )
-          else
-            ...exercise.sets.asMap().entries.map((entry) {
-              final setIndex = entry.key;
-              final set = entry.value;
-              return Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: terminalBorder),
-                      ),
-                      child: Text(
-                        'SET ${(setIndex + 1).toString().padLeft(2, '0')}',
-                        style: GoogleFonts.jetBrainsMono(fontSize: 11),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '${set.weight} KG  x  ${set.reps} REPS${set.rpe != null ? ' @ RPE ${set.rpe}' : ''}',
-                        style: GoogleFonts.jetBrainsMono(fontSize: 12),
-                      ),
-                    ),
-                    if (set.note != null)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: Icon(Icons.note,
-                            size: 12, color: terminalTextSecondary),
-                      ),
-                    InkWell(
-                      onTap: () => _quickAddReps(exerciseIndex, setIndex),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 2),
-                        child: Text('[+1]',
-                            style: GoogleFonts.jetBrainsMono(
-                                fontSize: 11, color: Colors.green)),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    InkWell(
-                      onTap: () => _quickAddWeight(exerciseIndex, setIndex),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 2),
-                        child: Text('[+2.5]',
-                            style: GoogleFonts.jetBrainsMono(
-                                fontSize: 11, color: Colors.green)),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    InkWell(
-                      onTap: () => _editSet(exerciseIndex, setIndex),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 2),
-                        child: Text('[EDIT]',
-                            style: GoogleFonts.jetBrainsMono(
-                                fontSize: 11, color: accent)),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
         ],
       ),
     );

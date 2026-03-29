@@ -116,6 +116,15 @@ Central service for all Hive database operations. Exposes:
 - Fixed edit_plan_screen exercises not loading issue
 - Added "Load Sample Data" button that clears and refreshes sample data
 
+## Priority 2 Refactoring
+- Split workout_screen.dart (1739→704 lines) into separate widget files:
+  - lib/widgets/workout/arrow_button.dart
+  - lib/widgets/workout/set_row.dart
+  - lib/widgets/workout/exercise_card.dart
+  - lib/widgets/workout/workout_dialogs.dart
+- All dialogs extracted as static methods in WorkoutDialogs class
+- `flutter analyze` passes with no errors
+
 ## UI Quality Pass (Latest)
 - Added active/pressed states (splashColor + highlightColor) to all InkWell interactive elements
 - Increased text readability: minimum 8px → 10px, chart labels 10px → 11px
