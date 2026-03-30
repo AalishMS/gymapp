@@ -55,7 +55,7 @@ class HomeScreen extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            '~/OPENGYM',
+            '> OPENGYM',
             style: GoogleFonts.jetBrainsMono(
               fontSize: 18,
               fontWeight: FontWeight.bold,

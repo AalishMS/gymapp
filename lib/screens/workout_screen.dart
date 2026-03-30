@@ -535,66 +535,74 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ReorderableListView.builder(
-              padding: const EdgeInsets.all(8),
-              physics: const ClampingScrollPhysics(),
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics()),
               cacheExtent: 500,
-              itemCount: session.exercises.length + 1,
-              onReorder: _reorderExercises,
-              proxyDecorator: (child, index, animation) {
-                return Material(
-                  color: terminalSurface,
-                  borderRadius: BorderRadius.zero,
-                  child: child,
-                );
-              },
-              itemBuilder: (context, exerciseIndex) {
-                if (exerciseIndex == session.exercises.length) {
-                  return Container(
-                    key: const ValueKey('add_exercise_button'),
-                    margin: const EdgeInsets.all(8),
-                    child: InkWell(
-                      onTap: _addEmptyExercise,
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: accent, width: 1),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '[ + ADD EXERCISE ]',
-                            style: GoogleFonts.jetBrainsMono(color: accent),
+              slivers: [
+                SliverReorderableList(
+                  itemCount: session.exercises.length + 1,
+                  onReorder: _reorderExercises,
+                  proxyDecorator: (child, index, animation) {
+                    return Material(
+                      color: terminalSurface,
+                      borderRadius: BorderRadius.zero,
+                      child: child,
+                    );
+                  },
+                  itemBuilder: (context, index) {
+                    if (index == session.exercises.length) {
+                      return ReorderableDelayedDragStartListener(
+                        key: const ValueKey('add_exercise_button'),
+                        index: index,
+                        child: InkWell(
+                          onTap: _addEmptyExercise,
+                          child: Container(
+                            margin: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: accent, width: 1),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '[ + ADD EXERCISE ]',
+                                style: GoogleFonts.jetBrainsMono(color: accent),
+                              ),
+                            ),
                           ),
                         ),
+                      );
+                    }
+
+                    final exercise = session.exercises[index];
+
+                    return ReorderableDelayedDragStartListener(
+                      key: ValueKey(index),
+                      index: index,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: terminalSurface,
+                          border: Border.all(color: terminalBorder, width: 1),
+                        ),
+                        child: ExerciseCard(
+                          exercise: exercise,
+                          exerciseIndex: index,
+                          accent: accent,
+                          onIncrementReps: _incrementReps,
+                          onDecrementReps: _decrementReps,
+                          onIncrementWeight: _incrementWeight,
+                          onDecrementWeight: _decrementWeight,
+                          onAddSet: (i) => _addSet(i),
+                          onEditSet: (i, setIndex) => _editSet(i, setIndex),
+                          onAddNote: _addExerciseNote,
+                          onRename: _showExerciseRenameDialog,
+                        ),
                       ),
-                    ),
-                  );
-                }
-
-                final exercise = session.exercises[exerciseIndex];
-
-                return Container(
-                  key: ValueKey(exerciseIndex),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: terminalSurface,
-                    border: Border.all(color: terminalBorder, width: 1),
-                  ),
-                  child: ExerciseCard(
-                    exercise: exercise,
-                    exerciseIndex: exerciseIndex,
-                    accent: accent,
-                    onIncrementReps: _incrementReps,
-                    onDecrementReps: _decrementReps,
-                    onIncrementWeight: _incrementWeight,
-                    onDecrementWeight: _decrementWeight,
-                    onAddSet: (i) => _addSet(i),
-                    onEditSet: (i, setIndex) => _editSet(i, setIndex),
-                    onAddNote: _addExerciseNote,
-                    onRename: _showExerciseRenameDialog,
-                  ),
-                );
-              },
+                    );
+                  },
+                ),
+              ],
             ),
           ),
           _buildWeekNavBar(accent),

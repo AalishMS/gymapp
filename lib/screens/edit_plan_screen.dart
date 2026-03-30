@@ -40,8 +40,6 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
             .map((e) => ExerciseTemplate(name: e.name, sets: e.sets))
             .toList() ??
         [];
-
-    debugPrint('Loaded ${_exercises.length} exercises from plan');
   }
 
   @override

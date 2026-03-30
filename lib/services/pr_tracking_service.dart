@@ -43,19 +43,4 @@ class PRTrackingService {
 
     return results;
   }
-
-  static String formatPRSummary(List<PRResult> prs) {
-    if (prs.isEmpty) return '';
-
-    final buffer = StringBuffer('🎉 New Personal Records!\n\n');
-    for (var pr in prs) {
-      if (pr.isWeightPR) {
-        buffer.writeln('${pr.exerciseName}: ${pr.newPR}kg');
-        if (pr.previousPR > 0) {
-          buffer.writeln('  (Previous PR: ${pr.previousPR}kg)');
-        }
-      }
-    }
-    return buffer.toString();
-  }
 }
