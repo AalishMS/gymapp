@@ -10,17 +10,6 @@ A terminal-style gym workout tracking app built with Flutter.
 - **Terminal Aesthetic** - Clean, retro terminal-inspired UI
 - **Offline-First** - All data stored locally with Hive
 
-## Screenshots
-
-### Home Screen
-![Home Screen](screenshots/home.png)
-
-### Workout Session
-![Workout Screen](screenshots/workout.png)
-
-### Exercise Details
-![Exercise Details](screenshots/exercise.png)
-
 ## Installation
 
 ### Prerequisites
