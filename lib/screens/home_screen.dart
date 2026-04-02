@@ -176,7 +176,7 @@ class HomeScreen extends StatelessWidget {
     return InkWell(
       onTap: () {
         Navigator.push(context,
-            MaterialPageRoute(builder: (_) => WorkoutScreen(plan: plan)));
+            MaterialPageRoute(builder: (_) => WorkoutScreen(plan: plan, planIndex: index)));
       },
       onLongPress: () => _showPlanOptions(context, plan, index, accent),
       splashColor: accent.withValues(alpha: 0.15),
