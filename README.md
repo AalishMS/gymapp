@@ -71,3 +71,8 @@ lib/
 ## License
 
 MIT License
+
+## Recent Updates
+
+- Fixed gesture conflicts in workout screen: week swipe and plan swipe now work properly
+- UI improvements for better touch interaction

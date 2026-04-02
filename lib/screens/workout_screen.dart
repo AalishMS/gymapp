@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -5,18 +6,21 @@ import '../models/workout_plan.dart';
 import '../models/workout_session.dart';
 import '../models/exercise.dart';
 import '../models/set.dart' as gym;
+import '../providers/workout_plan_provider.dart';
 import '../providers/workout_session_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/hive_service.dart';
 import '../services/pr_tracking_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/fade_page_route.dart';
 import '../widgets/workout/exercise_card.dart';
 import '../widgets/workout/workout_dialogs.dart';
 
 class WorkoutScreen extends StatefulWidget {
   final WorkoutPlan plan;
+  final int planIndex;
 
-  const WorkoutScreen({super.key, required this.plan});
+  const WorkoutScreen({super.key, required this.plan, required this.planIndex});
 
   @override
   State<WorkoutScreen> createState() => _WorkoutScreenState();
@@ -474,12 +478,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       backgroundColor: terminalBackground,
       appBar: AppBar(
         backgroundColor: terminalSurface,
-        toolbarHeight: 100,
-        title: Text(
-          '> ${widget.plan.name.toUpperCase()}',
-          style: GoogleFonts.jetBrainsMono(
-              fontSize: 14, fontWeight: FontWeight.bold, color: accent),
-        ),
+        toolbarHeight: 60,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: accent),
           onPressed: () {
@@ -487,126 +486,154 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             Navigator.pop(context);
           },
         ),
-        bottom: _weeks.isEmpty
-            ? null
-            : PreferredSize(
-                preferredSize: const Size.fromHeight(40),
-                child: Container(
-                  height: 40,
-                  color: terminalSurface,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _weeks.length,
+        bottom: _buildPlanTabBar(accent),
+      ),
+      body: Column(
+        children: [
+          _PlanHeader(
+            planName: widget.plan.name,
+            planIndex: widget.planIndex,
+            accent: accent,
+          ),
+          Expanded(
+            child: _GestureClaimingContainer(
+              onSwipeLeft: _currentWeekIndex < _weeks.length - 1
+                  ? () => _onWeekChanged(_currentWeekIndex + 1)
+                  : null,
+              onSwipeRight: _currentWeekIndex > 0
+                  ? () => _onWeekChanged(_currentWeekIndex - 1)
+                  : null,
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics()),
+                slivers: [
+                  SliverReorderableList(
+                    itemCount: session.exercises.length + 1,
+                    onReorder: _reorderExercises,
+                    proxyDecorator: (child, index, animation) {
+                      return Material(
+                        color: terminalSurface,
+                        borderRadius: BorderRadius.zero,
+                        child: child,
+                      );
+                    },
                     itemBuilder: (context, index) {
-                      final week = _weeks[index];
-                      final isSelected = index == _currentWeekIndex;
-                      return InkWell(
-                        onTap: () {
-                          _onWeekChanged(index);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected ? accent : Colors.transparent,
-                            border: Border(
-                              bottom: BorderSide(
-                                color: isSelected ? accent : terminalBorder,
-                                width: 2,
+                      if (index == session.exercises.length) {
+                        return ReorderableDelayedDragStartListener(
+                          key: const ValueKey('add_exercise_button'),
+                          index: index,
+                          child: InkWell(
+                            onTap: _addEmptyExercise,
+                            child: Container(
+                              margin: const EdgeInsets.all(8),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: accent, width: 1),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '[ + ADD EXERCISE ]',
+                                  style:
+                                      GoogleFonts.jetBrainsMono(color: accent),
+                                ),
                               ),
                             ),
                           ),
-                          child: Text(
-                            'WEEK $week',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 11,
-                              color: isSelected
-                                  ? Colors.black
-                                  : terminalTextPrimary,
-                            ),
+                        );
+                      }
+
+                      final exercise = session.exercises[index];
+
+                      return ReorderableDelayedDragStartListener(
+                        key: ValueKey(index),
+                        index: index,
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: terminalSurface,
+                            border: Border.all(color: terminalBorder, width: 1),
+                          ),
+                          child: ExerciseCard(
+                            exercise: exercise,
+                            exerciseIndex: index,
+                            accent: accent,
+                            onIncrementReps: _incrementReps,
+                            onDecrementReps: _decrementReps,
+                            onIncrementWeight: _incrementWeight,
+                            onDecrementWeight: _decrementWeight,
+                            onAddSet: (i) => _addSet(i),
+                            onEditSet: (i, setIndex) => _editSet(i, setIndex),
+                            onAddNote: _addExerciseNote,
+                            onRename: _showExerciseRenameDialog,
                           ),
                         ),
                       );
                     },
                   ),
-                ),
+                ],
               ),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics()),
-              cacheExtent: 500,
-              slivers: [
-                SliverReorderableList(
-                  itemCount: session.exercises.length + 1,
-                  onReorder: _reorderExercises,
-                  proxyDecorator: (child, index, animation) {
-                    return Material(
-                      color: terminalSurface,
-                      borderRadius: BorderRadius.zero,
-                      child: child,
-                    );
-                  },
-                  itemBuilder: (context, index) {
-                    if (index == session.exercises.length) {
-                      return ReorderableDelayedDragStartListener(
-                        key: const ValueKey('add_exercise_button'),
-                        index: index,
-                        child: InkWell(
-                          onTap: _addEmptyExercise,
-                          child: Container(
-                            margin: const EdgeInsets.all(8),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: accent, width: 1),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '[ + ADD EXERCISE ]',
-                                style: GoogleFonts.jetBrainsMono(color: accent),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-
-                    final exercise = session.exercises[index];
-
-                    return ReorderableDelayedDragStartListener(
-                      key: ValueKey(index),
-                      index: index,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: terminalSurface,
-                          border: Border.all(color: terminalBorder, width: 1),
-                        ),
-                        child: ExerciseCard(
-                          exercise: exercise,
-                          exerciseIndex: index,
-                          accent: accent,
-                          onIncrementReps: _incrementReps,
-                          onDecrementReps: _decrementReps,
-                          onIncrementWeight: _incrementWeight,
-                          onDecrementWeight: _decrementWeight,
-                          onAddSet: (i) => _addSet(i),
-                          onEditSet: (i, setIndex) => _editSet(i, setIndex),
-                          onAddNote: _addExerciseNote,
-                          onRename: _showExerciseRenameDialog,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
             ),
           ),
           _buildWeekNavBar(accent),
         ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget? _buildPlanTabBar(Color accent) {
+    final planProvider = context.watch<WorkoutPlanProvider>();
+    final plans = planProvider.plans;
+
+    if (plans.isEmpty) {
+      return null;
+    }
+
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(40),
+      child: Container(
+        height: 40,
+        color: terminalSurface,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: plans.length,
+          itemBuilder: (context, index) {
+            final plan = plans[index];
+            final isSelected = index == widget.planIndex;
+            return InkWell(
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  FadePageRoute(
+                    page: WorkoutScreen(
+                      plan: plan,
+                      planIndex: index,
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? accent : Colors.transparent,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isSelected ? accent : terminalBorder,
+                      width: 2,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  plan.name.toUpperCase(),
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 11,
+                    color: isSelected ? Colors.black : terminalTextPrimary,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -705,6 +732,130 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GestureClaimingContainer extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onSwipeLeft;
+  final VoidCallback? onSwipeRight;
+
+  const _GestureClaimingContainer({
+    required this.child,
+    this.onSwipeLeft,
+    this.onSwipeRight,
+  });
+
+  @override
+  State<_GestureClaimingContainer> createState() =>
+      _GestureClaimingContainerState();
+}
+
+class _GestureClaimingContainerState extends State<_GestureClaimingContainer> {
+  double _dragAccumulator = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return RawGestureDetector(
+      gestures: {
+        HorizontalDragGestureRecognizer: GestureRecognizerFactoryWithHandlers<
+            HorizontalDragGestureRecognizer>(
+          () => HorizontalDragGestureRecognizer(),
+          (HorizontalDragGestureRecognizer instance) {
+            instance
+              ..dragStartBehavior = DragStartBehavior.down
+              ..supportedDevices = {
+                PointerDeviceKind.touch,
+                PointerDeviceKind.mouse
+              };
+            instance.onStart = (details) {
+              _dragAccumulator = 0;
+            };
+            instance.onUpdate = (details) {
+              _dragAccumulator += details.delta.dx;
+            };
+            instance.onEnd = (details) {
+              final velocity = details.primaryVelocity ?? 0;
+              if (_dragAccumulator.abs() > 60 && velocity.abs() > 250) {
+                if (_dragAccumulator < 0 && widget.onSwipeLeft != null) {
+                  widget.onSwipeLeft!();
+                } else if (_dragAccumulator > 0 &&
+                    widget.onSwipeRight != null) {
+                  widget.onSwipeRight!();
+                }
+              }
+              _dragAccumulator = 0;
+            };
+          },
+        ),
+      },
+      child: widget.child,
+    );
+  }
+}
+
+class _PlanHeader extends StatelessWidget {
+  final String planName;
+  final int planIndex;
+  final Color accent;
+
+  const _PlanHeader({
+    required this.planName,
+    required this.planIndex,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragEnd: (details) {
+        final provider = context.read<WorkoutPlanProvider>();
+        final plans = provider.plans;
+        if (details.primaryVelocity != null) {
+          if (details.primaryVelocity!.abs() > 250) {
+            if (details.primaryVelocity! < 0) {
+              if (planIndex < plans.length - 1) {
+                Navigator.pushReplacement(
+                  context,
+                  FadePageRoute(
+                    page: WorkoutScreen(
+                      plan: plans[planIndex + 1],
+                      planIndex: planIndex + 1,
+                    ),
+                  ),
+                );
+              }
+            } else {
+              if (planIndex > 0) {
+                Navigator.pushReplacement(
+                  context,
+                  FadePageRoute(
+                    page: WorkoutScreen(
+                      plan: plans[planIndex - 1],
+                      planIndex: planIndex - 1,
+                    ),
+                  ),
+                );
+              }
+            }
+          }
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        color: terminalSurface,
+        child: Text(
+          '> ${planName.toUpperCase()}',
+          style: GoogleFonts.jetBrainsMono(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: accent,
+          ),
         ),
       ),
     );

@@ -12,6 +12,7 @@ A mobile gym tracking app built with Flutter that allows users to create workout
   - `hive_flutter: ^1.1.0` - Hive Flutter integration
   - `shared_preferences: ^2.2.2` - App settings persistence
   - `fl_chart: ^0.66.0` - Charts for statistics
+  - `google_fonts: ^6.0.0` - Custom fonts
 
 ## Project Structure
 
@@ -94,7 +95,9 @@ Central service for all Hive database operations. Exposes:
 ## Developer Rules
 - Always read opencode.md at the start of every session
 - Always run `flutter analyze` after every file change
-- Fix all errors before moving to the next task
+- Fix all errors (not warnings) before moving to the next task
+- Update opencode.md with any significant changes (new features, bug fixes, refactoring)
+- Commit and push changes to git after each task completion
 - If Hive models change, run:
   ```
   flutter pub run build_runner build --delete-conflicting-outputs
@@ -109,6 +112,9 @@ Central service for all Hive database operations. Exposes:
 - None reported yet
 
 ## Recent Changes
+- Fixed gesture conflicts in workout_screen.dart:
+  - Week swipe: Replaced GestureDetector with RawGestureDetector using HorizontalDragGestureRecognizer with cumulative delta tracking (dx > 60 & velocity > 250)
+  - Plan swipe: Moved plan name from AppBar to body as _PlanHeader widget with its own GestureDetector
 - Removed `targetReps` and `targetSets` from ExerciseTemplate, replaced with single `sets` field
 - Added auto-generation of empty sets when starting a session from a plan
 - Added "+" button in workout screen to add new exercises during session
