@@ -113,7 +113,9 @@ Central service for all Hive database operations. Exposes:
 
 ## Recent Changes
 - Fixed gesture conflicts in workout_screen.dart:
-  - Week swipe: Replaced GestureDetector with RawGestureDetector using HorizontalDragGestureRecognizer with cumulative delta tracking (dx > 60 & velocity > 250)
+  - Week swipe: Implemented early directional claiming with angle-based disambiguation (abs(dx)/abs(dy) > 1.5 for horizontal, abs(dy)/abs(dx) > 1.0 for vertical) once movement > 10px
+  - Swipe triggers only when horizontal claimed AND total dx > 40px at onEnd
+  - Created _ExposingHorizontalDragGestureRecognizer subclass to expose protected resolve() method
   - Plan swipe: Moved plan name from AppBar to body as _PlanHeader widget with its own GestureDetector
 - Removed `targetReps` and `targetSets` from ExerciseTemplate, replaced with single `sets` field
 - Added auto-generation of empty sets when starting a session from a plan

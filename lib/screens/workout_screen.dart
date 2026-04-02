@@ -756,15 +756,20 @@ class _GestureClaimingContainer extends StatefulWidget {
 
 class _GestureClaimingContainerState extends State<_GestureClaimingContainer> {
   double _dragAccumulator = 0;
+  double _totalDx = 0;
+  double _totalDy = 0;
+  bool _hasClaimedGesture = false;
+  bool _isHorizontalGesture = false;
 
   @override
   Widget build(BuildContext context) {
     return RawGestureDetector(
       gestures: {
-        HorizontalDragGestureRecognizer: GestureRecognizerFactoryWithHandlers<
-            HorizontalDragGestureRecognizer>(
-          () => HorizontalDragGestureRecognizer(),
-          (HorizontalDragGestureRecognizer instance) {
+        _ExposingHorizontalDragGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<
+                _ExposingHorizontalDragGestureRecognizer>(
+          () => _ExposingHorizontalDragGestureRecognizer(),
+          (_ExposingHorizontalDragGestureRecognizer instance) {
             instance
               ..dragStartBehavior = DragStartBehavior.down
               ..supportedDevices = {
@@ -773,13 +778,35 @@ class _GestureClaimingContainerState extends State<_GestureClaimingContainer> {
               };
             instance.onStart = (details) {
               _dragAccumulator = 0;
+              _totalDx = 0;
+              _totalDy = 0;
+              _hasClaimedGesture = false;
+              _isHorizontalGesture = false;
             };
             instance.onUpdate = (details) {
               _dragAccumulator += details.delta.dx;
+              _totalDx += details.delta.dx;
+              _totalDy += details.delta.dy;
+
+              final totalMovement = _totalDx.abs() + _totalDy.abs();
+              if (!_hasClaimedGesture && totalMovement > 10) {
+                if (_totalDy.abs() == 0) {
+                  instance.resolve(GestureDisposition.accepted);
+                  _hasClaimedGesture = true;
+                  _isHorizontalGesture = true;
+                } else if (_totalDx.abs() / _totalDy.abs() > 1.5) {
+                  instance.resolve(GestureDisposition.accepted);
+                  _hasClaimedGesture = true;
+                  _isHorizontalGesture = true;
+                } else if (_totalDy.abs() / _totalDx.abs() > 1.0) {
+                  instance.resolve(GestureDisposition.rejected);
+                  _hasClaimedGesture = true;
+                  _isHorizontalGesture = false;
+                }
+              }
             };
             instance.onEnd = (details) {
-              final velocity = details.primaryVelocity ?? 0;
-              if (_dragAccumulator.abs() > 60 && velocity.abs() > 250) {
+              if (_isHorizontalGesture && _dragAccumulator.abs() > 40) {
                 if (_dragAccumulator < 0 && widget.onSwipeLeft != null) {
                   widget.onSwipeLeft!();
                 } else if (_dragAccumulator > 0 &&
@@ -794,6 +821,14 @@ class _GestureClaimingContainerState extends State<_GestureClaimingContainer> {
       },
       child: widget.child,
     );
+  }
+}
+
+class _ExposingHorizontalDragGestureRecognizer
+    extends HorizontalDragGestureRecognizer {
+  @override
+  void resolve(GestureDisposition disposition) {
+    super.resolve(disposition);
   }
 }
 
