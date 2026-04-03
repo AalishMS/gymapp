@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/set.dart' as gym;
 import '../../theme/app_theme.dart';
-import 'arrow_button.dart';
 
 class SetRow extends StatelessWidget {
   final int setIndex;
@@ -39,7 +38,7 @@ class SetRow extends StatelessWidget {
             height: 24,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              border: Border.all(color: terminalBorder),
+              border: Border.all(color: borderColor(context)),
             ),
             child: Text(
               '${setIndex + 1}',
@@ -48,49 +47,102 @@ class SetRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              '${set.weight}kg x ${set.reps}${set.rpe != null ? ' @${set.rpe}' : ''}',
-              style: GoogleFonts.jetBrainsMono(fontSize: 11),
+            child: InkWell(
+              onTap: onEdit,
+              splashColor: accent.withValues(alpha: 0.2),
+              highlightColor: accent.withValues(alpha: 0.1),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  '${set.weight}kg x ${set.reps}${set.rpe != null ? ' @${set.rpe}' : ''}',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: textPrimaryColor(context),
+                  ),
+                ),
+              ),
             ),
           ),
-          ArrowButton(
-            icon: Icons.keyboard_arrow_down,
-            onTap: onDecrementReps,
-            accent: accent,
-          ),
-          ArrowButton(
-            icon: Icons.keyboard_arrow_up,
-            onTap: onIncrementReps,
-            accent: accent,
+          const SizedBox(width: 8),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: borderColor(context)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ControlButton(
+                  label: '−',
+                  onTap: onDecrementWeight,
+                  accent: accent,
+                ),
+                _ControlButton(
+                  label: '+',
+                  onTap: onIncrementWeight,
+                  accent: accent,
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: 4),
-          ArrowButton(
-            icon: Icons.keyboard_arrow_down,
-            onTap: onDecrementWeight,
-            accent: accent,
-          ),
-          ArrowButton(
-            icon: Icons.keyboard_arrow_up,
-            onTap: onIncrementWeight,
-            accent: accent,
-          ),
-          const SizedBox(width: 4),
-          InkWell(
-            onTap: onEdit,
-            child: Container(
-              width: 36,
-              height: 24,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border.all(color: accent),
-              ),
-              child: Text(
-                'EDIT',
-                style: GoogleFonts.jetBrainsMono(fontSize: 7, color: accent),
-              ),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: borderColor(context)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ControlButton(
+                  label: '−',
+                  onTap: onDecrementReps,
+                  accent: accent,
+                ),
+                _ControlButton(
+                  label: '+',
+                  onTap: onIncrementReps,
+                  accent: accent,
+                ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ControlButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final Color accent;
+
+  const _ControlButton({
+    required this.label,
+    required this.onTap,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: accent.withValues(alpha: 0.2),
+        highlightColor: accent.withValues(alpha: 0.1),
+        child: Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 16,
+              color: textPrimaryColor(context),
+            ),
+          ),
+        ),
       ),
     );
   }

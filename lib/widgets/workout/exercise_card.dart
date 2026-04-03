@@ -16,6 +16,7 @@ class ExerciseCard extends StatelessWidget {
   final void Function(int exerciseIndex, int setIndex) onEditSet;
   final void Function(int exerciseIndex) onAddNote;
   final void Function(int exerciseIndex) onRename;
+  final void Function(int exerciseIndex) onDeleteExercise;
 
   const ExerciseCard({
     super.key,
@@ -30,6 +31,7 @@ class ExerciseCard extends StatelessWidget {
     required this.onEditSet,
     required this.onAddNote,
     required this.onRename,
+    required this.onDeleteExercise,
   });
 
   @override
@@ -78,6 +80,11 @@ class ExerciseCard extends StatelessWidget {
                 child: const Icon(Icons.note_add,
                     size: 20, color: terminalTextSecondary),
               ),
+              const SizedBox(width: 4),
+              InkWell(
+                onTap: () => onDeleteExercise(exerciseIndex),
+                child: Icon(Icons.delete_outline, size: 20, color: accent),
+              ),
               const SizedBox(width: 8),
               InkWell(
                 onTap: () => onAddSet(exerciseIndex),
@@ -108,43 +115,6 @@ class ExerciseCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 28),
-                        const Expanded(child: SizedBox()),
-                        SizedBox(
-                          width: 48,
-                          child: Text(
-                            'REP',
-                            style: GoogleFonts.jetBrainsMono(
-                                fontSize: 11,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withValues(alpha: 0.4)),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        SizedBox(
-                          width: 48,
-                          child: Text(
-                            'KG',
-                            style: GoogleFonts.jetBrainsMono(
-                                fontSize: 11,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withValues(alpha: 0.4)),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        const SizedBox(width: 40),
-                      ],
-                    ),
-                  ),
                   ...exercise.sets.asMap().entries.map((entry) {
                     final setIndex = entry.key;
                     final set = entry.value;

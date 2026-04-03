@@ -424,7 +424,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             SnackBar(
               content: Text('> Week number already exists',
                   style: GoogleFonts.jetBrainsMono()),
-              backgroundColor: terminalError,
+              backgroundColor: errorColor(context),
             ),
           );
           return;
@@ -444,7 +444,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         SnackBar(
           content: Text('> Cannot delete the last week',
               style: GoogleFonts.jetBrainsMono()),
-          backgroundColor: terminalError,
+          backgroundColor: errorColor(context),
         ),
       );
       return;
@@ -468,16 +468,36 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     }
   }
 
+  void _deleteExercise(int exerciseIndex) async {
+    final session = _getOrCreateSession();
+    final exercise = session.exercises[exerciseIndex];
+    final confirmed = await WorkoutDialogs.showDeleteExerciseDialog(
+      context,
+      exerciseName: exercise.name,
+    );
+
+    if (confirmed) {
+      final updatedExercises = List<Exercise>.from(session.exercises);
+      updatedExercises.removeAt(exerciseIndex);
+      _updateSession(session.copyWith(exercises: updatedExercises));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = _getOrCreateSession();
     final settings = context.watch<SettingsProvider>();
     final accent = settings.accentColor;
+    final error = errorColor(context);
+    final surface = surfaceColor(context);
+    final border = borderColor(context);
+    final textPrimary = textPrimaryColor(context);
+    final textSecondary = textSecondaryColor(context);
 
     return Scaffold(
-      backgroundColor: terminalBackground,
+      backgroundColor: backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         toolbarHeight: 60,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: accent),
@@ -512,7 +532,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     onReorder: _reorderExercises,
                     proxyDecorator: (child, index, animation) {
                       return Material(
-                        color: terminalSurface,
+                        color: surfaceColor(context),
                         borderRadius: BorderRadius.zero,
                         child: child,
                       );
@@ -550,8 +570,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           decoration: BoxDecoration(
-                            color: terminalSurface,
-                            border: Border.all(color: terminalBorder, width: 1),
+                            color: surfaceColor(context),
+                            border: Border.all(
+                                color: borderColor(context), width: 1),
                           ),
                           child: ExerciseCard(
                             exercise: exercise,
@@ -565,6 +586,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                             onEditSet: (i, setIndex) => _editSet(i, setIndex),
                             onAddNote: _addExerciseNote,
                             onRename: _showExerciseRenameDialog,
+                            onDeleteExercise: _deleteExercise,
                           ),
                         ),
                       );
@@ -574,7 +596,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               ),
             ),
           ),
-          _buildWeekNavBar(accent),
+          _buildWeekNavBar(),
         ],
       ),
     );
@@ -592,7 +614,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       preferredSize: const Size.fromHeight(40),
       child: Container(
         height: 40,
-        color: terminalSurface,
+        color: surfaceColor(context),
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           itemCount: plans.length,
@@ -618,7 +640,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   color: isSelected ? accent : Colors.transparent,
                   border: Border(
                     bottom: BorderSide(
-                      color: isSelected ? accent : terminalBorder,
+                      color: isSelected ? accent : borderColor(context),
                       width: 2,
                     ),
                   ),
@@ -627,7 +649,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   plan.name.toUpperCase(),
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 11,
-                    color: isSelected ? Colors.black : terminalTextPrimary,
+                    color:
+                        isSelected ? Colors.black : textPrimaryColor(context),
                   ),
                 ),
               ),
@@ -638,11 +661,16 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     );
   }
 
-  Widget _buildWeekNavBar(Color accent) {
+  Widget _buildWeekNavBar() {
+    final accent = context.watch<SettingsProvider>().accentColor;
+    final surface = surfaceColor(context);
+    final border = borderColor(context);
+    final textPrimary = textPrimaryColor(context);
+
     return Container(
-      decoration: const BoxDecoration(
-        color: terminalSurface,
-        border: Border(top: BorderSide(color: terminalBorder, width: 1)),
+      decoration: BoxDecoration(
+        color: surface,
+        border: Border(top: BorderSide(color: border, width: 1)),
       ),
       child: SafeArea(
         child: Column(
@@ -691,16 +719,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: isSelected ? accent : Colors.transparent,
-                            border: Border.all(
-                                color: isSelected ? accent : terminalBorder),
+                            border:
+                                Border.all(color: isSelected ? accent : border),
                           ),
                           child: Text(
                             'WEEK $week',
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 11,
-                              color: isSelected
-                                  ? Colors.black
-                                  : terminalTextPrimary,
+                              color: isSelected ? Colors.black : textPrimary,
                             ),
                           ),
                         ),
@@ -726,7 +752,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     Text(
                       '> Auto-saving...',
                       style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10, color: terminalTextSecondary),
+                          fontSize: 10, color: textSecondaryColor(context)),
                     ),
                   ],
                 ),
@@ -883,7 +909,7 @@ class _PlanHeader extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        color: terminalSurface,
+        color: surfaceColor(context),
         child: Text(
           '> ${planName.toUpperCase()}',
           style: GoogleFonts.jetBrainsMono(
