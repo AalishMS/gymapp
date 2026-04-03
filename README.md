@@ -7,7 +7,7 @@ A terminal-style gym workout tracking app built with Flutter.
 - **Workout Tracking** - Log exercises, sets, reps, and weights
 - **Plan Management** - Create and manage workout plans
 - **PR Tracking** - Automatically track personal records
-- **Terminal Aesthetic** - Clean, retro terminal-inspired UI
+- **Customizable Theme** - Light/dark mode with 12 accent color choices
 - **Offline-First** - All data stored locally with Hive
 
 ## Installation
@@ -74,5 +74,6 @@ MIT License
 
 ## Recent Updates
 
-- Fixed gesture conflicts in workout screen: week swipe and plan swipe now work properly
+- Added light/dark theme support with 12 custom accent colors
+- Page transition animations using fade effect
 - UI improvements for better touch interaction
