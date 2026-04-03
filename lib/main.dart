@@ -62,7 +62,7 @@ class _MyAppState extends State<MyApp> {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(
-          backgroundColor: const Color(0xFF0D0D0D),
+          backgroundColor: const Color(0xFF0F0F0F),
           body: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -72,7 +72,7 @@ class _MyAppState extends State<MyApp> {
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF00FF41),
+                    color: const Color(0xFF00A8FF),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -81,7 +81,7 @@ class _MyAppState extends State<MyApp> {
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: const Color(0xFF00FF41),
+                    color: const Color(0xFF00A8FF),
                   ),
                 ),
               ],
@@ -100,14 +100,15 @@ class _MyAppState extends State<MyApp> {
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settings, child) {
-          final accentColor = settings.accentColor;
+          final accentDark = settings.accentColorDark;
+          final accentLight = settings.accentColorLight;
 
           return MaterialApp(
             title: 'OpenGym',
             debugShowCheckedModeBanner: false,
-            theme: buildTheme(accentColor),
-            darkTheme: buildTheme(accentColor),
-            themeMode: ThemeMode.dark,
+            theme: buildTheme(accentLight, Brightness.light),
+            darkTheme: buildTheme(accentDark, Brightness.dark),
+            themeMode: settings.themeMode,
             home: const HomeScreen(),
           );
         },

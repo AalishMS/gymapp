@@ -31,11 +31,29 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   int _currentWeekIndex = 0;
   final Map<int, WorkoutSession> _weekSessions = {};
   bool _isSaving = false;
+  final ScrollController _weekNavScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadWeeks();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToSelectedWeek();
+    });
+  }
+
+  @override
+  void dispose() {
+    _weekNavScrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToSelectedWeek() {
+    if (!_weekNavScrollController.hasClients) return;
+    const double itemWidth = 68;
+    final offset = _currentWeekIndex * itemWidth;
+    final maxScroll = _weekNavScrollController.position.maxScrollExtent;
+    _weekNavScrollController.jumpTo(offset.clamp(0.0, maxScroll));
   }
 
   void _loadWeeks() {
@@ -616,6 +634,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         height: 40,
         color: surfaceColor(context),
         child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics()),
           scrollDirection: Axis.horizontal,
           itemCount: plans.length,
           itemBuilder: (context, index) {
@@ -678,6 +698,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             SizedBox(
               height: 40,
               child: ListView.builder(
+                controller: _weekNavScrollController,
+                physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics()),
                 scrollDirection: Axis.horizontal,
                 itemCount: _weeks.length + 1,
                 itemBuilder: (context, index) {

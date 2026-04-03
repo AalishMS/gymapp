@@ -65,10 +65,10 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Dialog(
-              backgroundColor: terminalSurface,
+              backgroundColor: surfaceColor(context),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.zero,
-                side: const BorderSide(color: terminalBorder, width: 1),
+                side: BorderSide(color: borderColor(context), width: 1),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -88,7 +88,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                     Text(
                       'SELECT CATEGORY',
                       style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10, color: terminalTextSecondary),
+                          fontSize: 10, color: textSecondaryColor(context)),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
@@ -118,7 +118,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                       Text(
                         'SELECT EXERCISE',
                         style: GoogleFonts.jetBrainsMono(
-                            fontSize: 10, color: terminalTextSecondary),
+                            fontSize: 10, color: textSecondaryColor(context)),
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
@@ -149,7 +149,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                     Text(
                       'OR ENTER CUSTOM EXERCISE',
                       style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10, color: terminalTextSecondary),
+                          fontSize: 10, color: textSecondaryColor(context)),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -185,7 +185,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                           onPressed: () => Navigator.pop(context),
                           child: Text('[CANCEL]',
                               style: GoogleFonts.jetBrainsMono(
-                                  color: terminalTextSecondary)),
+                                  color: textSecondaryColor(context))),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton(
@@ -197,7 +197,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                                   content: Text(
                                       '> Please select or enter an exercise',
                                       style: GoogleFonts.jetBrainsMono()),
-                                  backgroundColor: terminalError,
+                                  backgroundColor: errorColor(context),
                                 ),
                               );
                               return;
@@ -264,7 +264,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
           SnackBar(
             content: Text('> Cannot delete the last set',
                 style: GoogleFonts.jetBrainsMono()),
-            backgroundColor: terminalError,
+            backgroundColor: errorColor(context),
           ),
         );
         return;
@@ -281,7 +281,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
         SnackBar(
           content: Text('> Plan name cannot be empty',
               style: GoogleFonts.jetBrainsMono()),
-          backgroundColor: terminalError,
+          backgroundColor: errorColor(context),
         ),
       );
       return;
@@ -292,7 +292,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
         SnackBar(
           content: Text('> Add at least one exercise',
               style: GoogleFonts.jetBrainsMono()),
-          backgroundColor: terminalError,
+          backgroundColor: errorColor(context),
         ),
       );
       return;
@@ -318,9 +318,9 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
     final accent = context.watch<SettingsProvider>().accentColor;
 
     return Scaffold(
-      backgroundColor: terminalBackground,
+      backgroundColor: backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         title: Text(
           '> CREATE PLAN',
           style: GoogleFonts.jetBrainsMono(
@@ -359,30 +359,30 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                border: Border.all(color: terminalBorder),
+                border: Border.all(color: borderColor(context)),
               ),
               child: Row(
                 children: [
                   Icon(Icons.info_outline,
-                      size: 16, color: terminalTextSecondary),
+                      size: 16, color: textSecondaryColor(context)),
                   const SizedBox(width: 8),
                   Text(
                     'Tap [+ ADD EXERCISE] below to add exercises',
                     style: GoogleFonts.jetBrainsMono(
-                        fontSize: 12, color: terminalTextSecondary),
+                        fontSize: 12, color: textSecondaryColor(context)),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            const Divider(color: terminalBorder),
+            Divider(color: borderColor(context)),
             Expanded(
               child: _exercises.isEmpty
                   ? Center(
                       child: Text(
                         '> No exercises added yet',
                         style: GoogleFonts.jetBrainsMono(
-                            color: terminalTextSecondary),
+                            color: textSecondaryColor(context)),
                       ),
                     )
                   : ListView.builder(
@@ -392,8 +392,9 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           decoration: BoxDecoration(
-                            color: terminalSurface,
-                            border: Border.all(color: terminalBorder, width: 1),
+                            color: surfaceColor(context),
+                            border: Border.all(
+                                color: borderColor(context), width: 1),
                           ),
                           child: _buildExerciseCard(
                               exercise, exerciseIndex, accent),
@@ -470,7 +471,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
               Text(
                 '${exercise.sets.length} SETS',
                 style: GoogleFonts.jetBrainsMono(
-                    fontSize: 10, color: terminalTextSecondary),
+                    fontSize: 10, color: textSecondaryColor(context)),
               ),
               const SizedBox(width: 8),
               InkWell(
@@ -479,16 +480,16 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                     _exercises.removeAt(exerciseIndex);
                   });
                 },
-                splashColor: terminalError.withValues(alpha: 0.2),
-                highlightColor: terminalError.withValues(alpha: 0.1),
+                splashColor: errorColor(context).withValues(alpha: 0.2),
+                highlightColor: errorColor(context).withValues(alpha: 0.1),
                 child: Text('[DEL]',
                     style: GoogleFonts.jetBrainsMono(
-                        fontSize: 12, color: terminalError)),
+                        fontSize: 12, color: errorColor(context))),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          const Divider(color: terminalBorder),
+          Divider(color: borderColor(context)),
           ...exercise.sets.asMap().entries.map((entry) {
             final setIndex = entry.key;
             final set = entry.value;
@@ -500,7 +501,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      border: Border.all(color: terminalBorder),
+                      border: Border.all(color: borderColor(context)),
                     ),
                     child: Text(
                       'SET ${(setIndex + 1).toString().padLeft(2, '0')}',
@@ -566,11 +567,11 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                   const SizedBox(width: 4),
                   InkWell(
                     onTap: () => _deleteSet(exerciseIndex, setIndex),
-                    splashColor: terminalError.withValues(alpha: 0.2),
-                    highlightColor: terminalError.withValues(alpha: 0.1),
+                    splashColor: errorColor(context).withValues(alpha: 0.2),
+                    highlightColor: errorColor(context).withValues(alpha: 0.1),
                     child: Text('[DEL]',
                         style: GoogleFonts.jetBrainsMono(
-                            fontSize: 10, color: terminalError)),
+                            fontSize: 10, color: errorColor(context))),
                   ),
                 ],
               ),

@@ -17,9 +17,9 @@ class HistoryScreen extends StatelessWidget {
     final accent = context.watch<SettingsProvider>().accentColor;
 
     return Scaffold(
-      backgroundColor: terminalBackground,
+      backgroundColor: backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         title: Text(
           '> WORKOUT HISTORY',
           style: GoogleFonts.jetBrainsMono(
@@ -41,7 +41,7 @@ class HistoryScreen extends StatelessWidget {
                     '> NO SESSIONS FOUND',
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 16,
-                      color: terminalTextSecondary,
+                      color: textSecondaryColor(context),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -49,7 +49,7 @@ class HistoryScreen extends StatelessWidget {
                     'Complete a workout to see it here',
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 12,
-                      color: terminalTextSecondary,
+                      color: textSecondaryColor(context),
                     ),
                   ),
                 ],
@@ -69,10 +69,10 @@ class HistoryScreen extends StatelessWidget {
                   showDialog(
                     context: context,
                     builder: (ctx) => Dialog(
-                      backgroundColor: terminalSurface,
+                      backgroundColor: surfaceColor(context),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.zero,
-                        side: const BorderSide(color: terminalBorder, width: 1),
+                        side: BorderSide(color: borderColor(context), width: 1),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
@@ -85,14 +85,15 @@ class HistoryScreen extends StatelessWidget {
                               style: GoogleFonts.jetBrainsMono(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: terminalError,
+                                color: errorColor(context),
                               ),
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'This will permanently delete this workout session.',
                               style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 12, color: terminalTextSecondary),
+                                  fontSize: 12,
+                                  color: textSecondaryColor(context)),
                             ),
                             const SizedBox(height: 16),
                             Row(
@@ -102,7 +103,7 @@ class HistoryScreen extends StatelessWidget {
                                   onPressed: () => Navigator.pop(ctx),
                                   child: Text('[CANCEL]',
                                       style: GoogleFonts.jetBrainsMono(
-                                          color: terminalTextSecondary)),
+                                          color: textSecondaryColor(context))),
                                 ),
                                 const SizedBox(width: 8),
                                 ElevatedButton(
@@ -111,7 +112,7 @@ class HistoryScreen extends StatelessWidget {
                                     Navigator.pop(ctx);
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: terminalError,
+                                    backgroundColor: errorColor(context),
                                     foregroundColor: Colors.white,
                                   ),
                                   child: Text('[DELETE]',
@@ -171,6 +172,9 @@ class _SessionCardState extends State<_SessionCard> {
     final prs = PRTrackingService.checkForNewPRs(session.exercises);
     final hasPR = prs.isNotEmpty;
     final accent = context.watch<SettingsProvider>().accentColor;
+    final border = borderColor(context);
+    final textSecondary = textSecondaryColor(context);
+    final error = errorColor(context);
 
     int totalSets = 0;
     int totalVolume = 0;
@@ -184,8 +188,8 @@ class _SessionCardState extends State<_SessionCard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: terminalSurface,
-        border: Border.all(color: terminalBorder, width: 1),
+        color: surfaceColor(context),
+        border: Border.all(color: border, width: 1),
       ),
       child: Column(
         children: [
@@ -241,16 +245,17 @@ class _SessionCardState extends State<_SessionCard> {
                       const SizedBox(width: 8),
                       InkWell(
                         onTap: widget.onDelete,
-                        splashColor: terminalError.withValues(alpha: 0.2),
-                        highlightColor: terminalError.withValues(alpha: 0.1),
+                        splashColor: errorColor(context).withValues(alpha: 0.2),
+                        highlightColor:
+                            errorColor(context).withValues(alpha: 0.1),
                         child: Text('[DEL]',
                             style: GoogleFonts.jetBrainsMono(
-                                fontSize: 10, color: terminalError)),
+                                fontSize: 10, color: errorColor(context))),
                       ),
                       const SizedBox(width: 8),
                       Icon(
                         _isExpanded ? Icons.expand_less : Icons.expand_more,
-                        color: terminalTextSecondary,
+                        color: textSecondaryColor(context),
                         size: 20,
                       ),
                     ],
@@ -265,23 +270,25 @@ class _SessionCardState extends State<_SessionCard> {
                   Text(
                     'WEEK ${session.weekNumber}  •  ${session.exercises.length} EXERCISES  •  $totalSets SETS  •  ${totalVolume}KG',
                     style: GoogleFonts.jetBrainsMono(
-                        fontSize: 10, color: terminalTextSecondary),
+                        fontSize: 10, color: textSecondaryColor(context)),
                   ),
                 ],
               ),
             ),
           ),
-          if (_isExpanded) _buildExpandedContent(session, accent),
+          if (_isExpanded)
+            _buildExpandedContent(session, accent, border, textSecondary),
         ],
       ),
     );
   }
 
-  Widget _buildExpandedContent(WorkoutSession session, Color accent) {
+  Widget _buildExpandedContent(
+      WorkoutSession session, Color accent, Color border, Color textSecondary) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: terminalBorder)),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,7 +335,7 @@ class _ExerciseSection extends StatelessWidget {
               child: Text(
                 exercise.note!,
                 style: GoogleFonts.jetBrainsMono(
-                    fontSize: 10, color: terminalTextSecondary),
+                    fontSize: 10, color: textSecondaryColor(context)),
               ),
             ),
           const SizedBox(height: 8),
@@ -342,7 +349,7 @@ class _ExerciseSection extends StatelessWidget {
                   Text(
                     'SET ${setIndex + 1}:',
                     style: GoogleFonts.jetBrainsMono(
-                        fontSize: 10, color: terminalTextSecondary),
+                        fontSize: 10, color: textSecondaryColor(context)),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -355,7 +362,7 @@ class _ExerciseSection extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
-                        border: Border.all(color: terminalBorder),
+                        border: Border.all(color: borderColor(context)),
                       ),
                       child: Text(
                         'RPE ${set.rpe}',
@@ -430,9 +437,9 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
   Widget build(BuildContext context) {
     final accent = context.watch<SettingsProvider>().accentColor;
     return Scaffold(
-      backgroundColor: terminalBackground,
+      backgroundColor: backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         title: Text(
           '> EDIT WORKOUT',
           style: GoogleFonts.jetBrainsMono(
@@ -476,8 +483,8 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
               decoration: BoxDecoration(
-                color: terminalSurface,
-                border: Border.all(color: terminalBorder, width: 1),
+                color: surfaceColor(context),
+                border: Border.all(color: borderColor(context), width: 1),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -508,11 +515,13 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                         ),
                         InkWell(
                           onTap: () => _removeExercise(index),
-                          splashColor: terminalError.withValues(alpha: 0.2),
-                          highlightColor: terminalError.withValues(alpha: 0.1),
+                          splashColor:
+                              errorColor(context).withValues(alpha: 0.2),
+                          highlightColor:
+                              errorColor(context).withValues(alpha: 0.1),
                           child: Text('[DEL]',
                               style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 10, color: terminalError)),
+                                  fontSize: 10, color: errorColor(context))),
                         ),
                       ],
                     ),
@@ -522,7 +531,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                         child: Text(
                           exercise.note!,
                           style: GoogleFonts.jetBrainsMono(
-                              fontSize: 10, color: terminalTextSecondary),
+                              fontSize: 10, color: textSecondaryColor(context)),
                         ),
                       ),
                     const SizedBox(height: 8),
@@ -536,7 +545,8 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                             Text(
                               'SET ${setIndex + 1}:',
                               style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 10, color: terminalTextSecondary),
+                                  fontSize: 10,
+                                  color: textSecondaryColor(context)),
                             ),
                             const SizedBox(width: 8),
                             Text(
@@ -584,10 +594,10 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
+          side: BorderSide(color: borderColor(context), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -621,7 +631,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                     onPressed: () => Navigator.pop(ctx),
                     child: Text('[CANCEL]',
                         style: GoogleFonts.jetBrainsMono(
-                            color: terminalTextSecondary)),
+                            color: textSecondaryColor(context))),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
@@ -668,10 +678,10 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
+          side: BorderSide(color: borderColor(context), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -720,7 +730,8 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                       Navigator.pop(ctx);
                     },
                     child: Text('[DELETE]',
-                        style: GoogleFonts.jetBrainsMono(color: terminalError)),
+                        style: GoogleFonts.jetBrainsMono(
+                            color: errorColor(context))),
                   ),
                   Row(
                     children: [
@@ -728,7 +739,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                         onPressed: () => Navigator.pop(ctx),
                         child: Text('[CANCEL]',
                             style: GoogleFonts.jetBrainsMono(
-                                color: terminalTextSecondary)),
+                                color: textSecondaryColor(context))),
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton(

@@ -12,10 +12,10 @@ class WorkoutDialogs {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
+          side: BorderSide(color: borderColor(context), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -43,7 +43,7 @@ class WorkoutDialogs {
                         Text(
                           '${pr.newPR}kg (Previous: ${pr.previousPR}kg)',
                           style: GoogleFonts.jetBrainsMono(
-                              fontSize: 12, color: terminalTextSecondary),
+                              fontSize: 12, color: textSecondaryColor(context)),
                         ),
                       ],
                     ),
@@ -78,10 +78,10 @@ class WorkoutDialogs {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
+          side: BorderSide(color: borderColor(context), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -105,9 +105,10 @@ class WorkoutDialogs {
                 decoration: InputDecoration(
                   labelText: 'Exercise name',
                   labelStyle: GoogleFonts.jetBrainsMono(fontSize: 12),
-                  enabledBorder: const OutlineInputBorder(
+                  enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(color: terminalBorder, width: 1),
+                    borderSide:
+                        BorderSide(color: borderColor(context), width: 1),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
@@ -123,7 +124,7 @@ class WorkoutDialogs {
                     onPressed: () => Navigator.pop(context),
                     child: Text('[CANCEL]',
                         style: GoogleFonts.jetBrainsMono(
-                            color: terminalTextSecondary)),
+                            color: textSecondaryColor(context))),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
@@ -134,7 +135,7 @@ class WorkoutDialogs {
                           SnackBar(
                             content: Text('> Enter exercise name',
                                 style: GoogleFonts.jetBrainsMono()),
-                            backgroundColor: terminalError,
+                            backgroundColor: errorColor(context),
                           ),
                         );
                         return;
@@ -168,10 +169,10 @@ class WorkoutDialogs {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
+          side: BorderSide(color: borderColor(context), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -195,9 +196,10 @@ class WorkoutDialogs {
                 decoration: InputDecoration(
                   labelText: 'Exercise name',
                   labelStyle: GoogleFonts.jetBrainsMono(fontSize: 12),
-                  enabledBorder: const OutlineInputBorder(
+                  enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(color: terminalBorder, width: 1),
+                    borderSide:
+                        BorderSide(color: borderColor(context), width: 1),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
@@ -213,7 +215,7 @@ class WorkoutDialogs {
                     onPressed: () => Navigator.pop(context),
                     child: Text('[CANCEL]',
                         style: GoogleFonts.jetBrainsMono(
-                            color: terminalTextSecondary)),
+                            color: textSecondaryColor(context))),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
@@ -224,7 +226,7 @@ class WorkoutDialogs {
                           SnackBar(
                             content: Text('> Enter exercise name',
                                 style: GoogleFonts.jetBrainsMono()),
-                            backgroundColor: terminalError,
+                            backgroundColor: errorColor(context),
                           ),
                         );
                         return;
@@ -270,10 +272,10 @@ class WorkoutDialogs {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Dialog(
-              backgroundColor: terminalSurface,
+              backgroundColor: surfaceColor(context),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.zero,
-                side: const BorderSide(color: terminalBorder, width: 1),
+                side: BorderSide(color: borderColor(context), width: 1),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -333,7 +335,7 @@ class WorkoutDialogs {
                               border: Border.all(
                                 color: selectedRpe == rpe
                                     ? accent
-                                    : terminalBorder,
+                                    : borderColor(context),
                               ),
                             ),
                             child: Center(
@@ -343,7 +345,7 @@ class WorkoutDialogs {
                                   fontSize: 12,
                                   color: selectedRpe == rpe
                                       ? Colors.black
-                                      : terminalTextPrimary,
+                                      : textPrimaryColor(context),
                                 ),
                               ),
                             ),
@@ -359,7 +361,7 @@ class WorkoutDialogs {
                           onPressed: () => Navigator.pop(context),
                           child: Text('[CANCEL]',
                               style: GoogleFonts.jetBrainsMono(
-                                  color: terminalTextSecondary)),
+                                  color: textSecondaryColor(context))),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton(
@@ -373,7 +375,7 @@ class WorkoutDialogs {
                                 SnackBar(
                                   content: Text('> Weight must be >= 0',
                                       style: GoogleFonts.jetBrainsMono()),
-                                  backgroundColor: terminalError,
+                                  backgroundColor: errorColor(context),
                                 ),
                               );
                               return;
@@ -384,7 +386,7 @@ class WorkoutDialogs {
                                 SnackBar(
                                   content: Text('> Reps must be > 0',
                                       style: GoogleFonts.jetBrainsMono()),
-                                  backgroundColor: terminalError,
+                                  backgroundColor: errorColor(context),
                                 ),
                               );
                               return;
@@ -439,10 +441,10 @@ class WorkoutDialogs {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Dialog(
-              backgroundColor: terminalSurface,
+              backgroundColor: surfaceColor(context),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.zero,
-                side: const BorderSide(color: terminalBorder, width: 1),
+                side: BorderSide(color: borderColor(context), width: 1),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -496,7 +498,7 @@ class WorkoutDialogs {
                               border: Border.all(
                                 color: selectedRpe == rpe
                                     ? accent
-                                    : terminalBorder,
+                                    : borderColor(context),
                               ),
                             ),
                             child: Center(
@@ -506,7 +508,7 @@ class WorkoutDialogs {
                                   fontSize: 12,
                                   color: selectedRpe == rpe
                                       ? Colors.black
-                                      : terminalTextPrimary,
+                                      : textPrimaryColor(context),
                                 ),
                               ),
                             ),
@@ -533,7 +535,7 @@ class WorkoutDialogs {
                           },
                           child: Text('[DELETE]',
                               style: GoogleFonts.jetBrainsMono(
-                                  color: terminalError)),
+                                  color: errorColor(context))),
                         ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -542,7 +544,7 @@ class WorkoutDialogs {
                               onPressed: () => Navigator.pop(context),
                               child: Text('[CANCEL]',
                                   style: GoogleFonts.jetBrainsMono(
-                                      color: terminalTextSecondary)),
+                                      color: textSecondaryColor(context))),
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton(
@@ -559,7 +561,7 @@ class WorkoutDialogs {
                                     SnackBar(
                                       content: Text('> Invalid values',
                                           style: GoogleFonts.jetBrainsMono()),
-                                      backgroundColor: terminalError,
+                                      backgroundColor: errorColor(context),
                                     ),
                                   );
                                   return;
@@ -610,10 +612,10 @@ class WorkoutDialogs {
       context: context,
       builder: (context) {
         return Dialog(
-          backgroundColor: terminalSurface,
+          backgroundColor: surfaceColor(context),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.zero,
-            side: const BorderSide(color: terminalBorder, width: 1),
+            side: BorderSide(color: borderColor(context), width: 1),
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -646,7 +648,7 @@ class WorkoutDialogs {
                       onPressed: () => Navigator.pop(context),
                       child: Text('[CANCEL]',
                           style: GoogleFonts.jetBrainsMono(
-                              color: terminalTextSecondary)),
+                              color: textSecondaryColor(context))),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -681,7 +683,7 @@ class WorkoutDialogs {
     final accent = context.read<SettingsProvider>().accentColor;
     showModalBottomSheet(
       context: context,
-      backgroundColor: terminalSurface,
+      backgroundColor: surfaceColor(context),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       builder: (context) => SafeArea(
         child: Column(
@@ -696,9 +698,9 @@ class WorkoutDialogs {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete, color: terminalError),
+              leading: Icon(Icons.delete, color: errorColor(context)),
               title: Text('DELETE',
-                  style: GoogleFonts.jetBrainsMono(color: terminalError)),
+                  style: GoogleFonts.jetBrainsMono(color: errorColor(context))),
               onTap: () {
                 Navigator.pop(context);
                 onDelete();
@@ -720,10 +722,10 @@ class WorkoutDialogs {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
+          side: BorderSide(color: borderColor(context), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -757,7 +759,7 @@ class WorkoutDialogs {
                     onPressed: () => Navigator.pop(context),
                     child: Text('[CANCEL]',
                         style: GoogleFonts.jetBrainsMono(
-                            color: terminalTextSecondary)),
+                            color: textSecondaryColor(context))),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
@@ -791,10 +793,10 @@ class WorkoutDialogs {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
+          side: BorderSide(color: borderColor(context), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -807,14 +809,14 @@ class WorkoutDialogs {
                 style: GoogleFonts.jetBrainsMono(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: terminalError,
+                  color: errorColor(context),
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 'This will permanently delete this week\'s workout data.',
                 style: GoogleFonts.jetBrainsMono(
-                    fontSize: 12, color: terminalTextSecondary),
+                    fontSize: 12, color: textSecondaryColor(context)),
               ),
               const SizedBox(height: 16),
               Row(
@@ -824,13 +826,75 @@ class WorkoutDialogs {
                     onPressed: () => Navigator.pop(context, false),
                     child: Text('[CANCEL]',
                         style: GoogleFonts.jetBrainsMono(
-                            color: terminalTextSecondary)),
+                            color: textSecondaryColor(context))),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: terminalError,
+                      backgroundColor: errorColor(context),
+                      foregroundColor: Colors.white,
+                    ),
+                    child:
+                        Text('[ DELETE ]', style: GoogleFonts.jetBrainsMono()),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return result ?? false;
+  }
+
+  static Future<bool> showDeleteExerciseDialog(
+    BuildContext context, {
+    required String exerciseName,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: surfaceColor(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: borderColor(context), width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '> DELETE EXERCISE?',
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: errorColor(context),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'This will permanently delete "$exerciseName" and all its sets.',
+                style: GoogleFonts.jetBrainsMono(
+                    fontSize: 12, color: textSecondaryColor(context)),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text('[CANCEL]',
+                        style: GoogleFonts.jetBrainsMono(
+                            color: textSecondaryColor(context))),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: errorColor(context),
                       foregroundColor: Colors.white,
                     ),
                     child:

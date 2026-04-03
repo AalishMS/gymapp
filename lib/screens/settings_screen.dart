@@ -11,21 +11,24 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   String _getAccentColorName(SettingsProvider settings) {
-    final index = settings.getAccentColorIndex();
-    if (index >= 0 && index < SettingsProvider.accentColors.length) {
-      return SettingsProvider.accentColors[index].name;
-    }
-    return 'MATRIX GREEN';
+    return SettingsProvider.accents[settings.accentIndex].name;
   }
 
   @override
   Widget build(BuildContext context) {
-    final accent = context.watch<SettingsProvider>().accentColor;
+    final settings = context.watch<SettingsProvider>();
+    final accent = settings.accentColor;
+    final bg = backgroundColor(context);
+    final surface = surfaceColor(context);
+    final border = borderColor(context);
+    final textSecondary = textSecondaryColor(context);
+    final textPrimary = textPrimaryColor(context);
+    final error = errorColor(context);
 
     return Scaffold(
-      backgroundColor: terminalBackground,
+      backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: terminalSurface,
+        backgroundColor: surface,
         title: Text(
           '> SETTINGS',
           style: GoogleFonts.jetBrainsMono(
@@ -40,10 +43,13 @@ class SettingsScreen extends StatelessWidget {
         builder: (context, settings, child) {
           return ListView(
             children: [
-              _SectionHeader(title: 'APPEARANCE', accent: accent),
-              _buildAccentColorSection(context, settings, accent),
-              const Divider(color: terminalBorder),
-              _SectionHeader(title: 'WORKOUT', accent: accent),
+              _SectionHeader(
+                  title: 'APPEARANCE', accent: accent, border: border),
+              _buildThemeSection(context, settings, accent),
+              _buildAccentColorSection(
+                  context, settings, accent, textSecondary),
+              Divider(color: border),
+              _SectionHeader(title: 'WORKOUT', accent: accent, border: border),
               _buildSwitchTile(
                 icon: Icons.speed,
                 title: 'HIGH REFRESH RATE',
@@ -51,6 +57,9 @@ class SettingsScreen extends StatelessWidget {
                 value: settings.highRefreshRate,
                 onChanged: (value) => settings.setHighRefreshRate(value),
                 accent: accent,
+                textSecondary: textSecondary,
+                border: border,
+                textPrimary: textPrimary,
               ),
               _buildSwitchTile(
                 icon: Icons.bolt,
@@ -59,9 +68,12 @@ class SettingsScreen extends StatelessWidget {
                 value: settings.autoFillLast,
                 onChanged: (value) => settings.setAutoFillLast(value),
                 accent: accent,
+                textSecondary: textSecondary,
+                border: border,
+                textPrimary: textPrimary,
               ),
-              const Divider(color: terminalBorder),
-              _SectionHeader(title: 'UNITS', accent: accent),
+              Divider(color: border),
+              _SectionHeader(title: 'UNITS', accent: accent, border: border),
               _buildSettingsTile(
                 icon: Icons.fitness_center,
                 title: 'WEIGHT UNIT',
@@ -70,15 +82,21 @@ class SettingsScreen extends StatelessWidget {
                     : 'POUNDS (LBS)',
                 onTap: () => _showWeightUnitDialog(context, settings),
                 accent: accent,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                border: border,
               ),
-              const Divider(color: terminalBorder),
-              _SectionHeader(title: 'DATA', accent: accent),
+              Divider(color: border),
+              _SectionHeader(title: 'DATA', accent: accent, border: border),
               _buildSettingsTile(
                 icon: Icons.download,
                 title: 'LOAD SAMPLE DATA',
                 subtitle: 'Add sample plans and workouts for testing',
                 onTap: () => _loadSampleData(context),
                 accent: accent,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                border: border,
               ),
               _buildSettingsTile(
                 icon: Icons.delete_forever,
@@ -87,9 +105,13 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => _confirmClearData(context),
                 isDestructive: true,
                 accent: accent,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                error: error,
+                border: border,
               ),
-              const Divider(color: terminalBorder),
-              _SectionHeader(title: 'ABOUT', accent: accent),
+              Divider(color: border),
+              _SectionHeader(title: 'ABOUT', accent: accent, border: border),
               Container(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -97,13 +119,13 @@ class SettingsScreen extends StatelessWidget {
                     Text(
                       'VERSION',
                       style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10, color: terminalTextSecondary),
+                          fontSize: 10, color: textSecondary),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '1.0.0',
                       style: GoogleFonts.jetBrainsMono(
-                          fontSize: 14, color: terminalTextPrimary),
+                          fontSize: 14, color: textPrimary),
                     ),
                   ],
                 ),
@@ -113,7 +135,7 @@ class SettingsScreen extends StatelessWidget {
                 child: Text(
                   '> Made by Aalish',
                   style: GoogleFonts.jetBrainsMono(
-                    color: terminalTextSecondary,
+                    color: textSecondary,
                     fontSize: 12,
                   ),
                 ),
@@ -126,8 +148,140 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAccentColorSection(
+  Widget _buildThemeSection(
       BuildContext context, SettingsProvider settings, Color accent) {
+    final border = borderColor(context);
+    final textSecondary = textSecondaryColor(context);
+    final textPrimary = textPrimaryColor(context);
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'THEME',
+            style: GoogleFonts.jetBrainsMono(
+                fontSize: 12, fontWeight: FontWeight.bold, color: accent),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '> ${_getThemeName(settings.themeMode)}',
+            style:
+                GoogleFonts.jetBrainsMono(fontSize: 10, color: textSecondary),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildThemeOption(
+                context: context,
+                mode: ThemeMode.dark,
+                icon: Icons.dark_mode,
+                label: 'DARK',
+                isSelected: settings.themeMode == ThemeMode.dark,
+                settings: settings,
+                accent: accent,
+                textSecondary: textSecondary,
+                textPrimary: textPrimary,
+              ),
+              const SizedBox(width: 8),
+              _buildThemeOption(
+                context: context,
+                mode: ThemeMode.light,
+                icon: Icons.light_mode,
+                label: 'LIGHT',
+                isSelected: settings.themeMode == ThemeMode.light,
+                settings: settings,
+                accent: accent,
+                textSecondary: textSecondary,
+                textPrimary: textPrimary,
+              ),
+              const SizedBox(width: 8),
+              _buildThemeOption(
+                context: context,
+                mode: ThemeMode.system,
+                icon: Icons.brightness_auto,
+                label: 'SYSTEM',
+                isSelected: settings.themeMode == ThemeMode.system,
+                settings: settings,
+                accent: accent,
+                textSecondary: textSecondary,
+                textPrimary: textPrimary,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeOption({
+    required BuildContext context,
+    required ThemeMode mode,
+    required IconData icon,
+    required String label,
+    required bool isSelected,
+    required SettingsProvider settings,
+    required Color accent,
+    required Color textSecondary,
+    required Color textPrimary,
+  }) {
+    final border = borderColor(context);
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => settings.setThemeMode(mode),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? accent.withAlpha(25) : Colors.transparent,
+            border: Border.all(
+              color: isSelected ? accent : border,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isSelected ? accent : textSecondary,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? accent : textSecondary,
+                ),
+              ),
+              if (isSelected) ...[
+                const SizedBox(height: 2),
+                Icon(Icons.check, size: 12, color: accent),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getThemeName(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.dark:
+        return 'DARK';
+      case ThemeMode.light:
+        return 'LIGHT';
+      case ThemeMode.system:
+        return 'SYSTEM';
+    }
+  }
+
+  Widget _buildAccentColorSection(BuildContext context,
+      SettingsProvider settings, Color accent, Color textSecondary) {
+    final border = borderColor(context);
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -141,18 +295,19 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '> ${_getAccentColorName(settings)}',
-            style: GoogleFonts.jetBrainsMono(
-                fontSize: 10, color: terminalTextSecondary),
+            style:
+                GoogleFonts.jetBrainsMono(fontSize: 10, color: textSecondary),
           ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children:
-                List.generate(SettingsProvider.accentColors.length, (index) {
-              final option = SettingsProvider.accentColors[index];
-              final isSelected = settings.accentColor == option.color;
-              return _buildColorBox(option, isSelected, settings, accent);
+            children: List.generate(SettingsProvider.accents.length, (index) {
+              final option = SettingsProvider.accents[index];
+              final isSelected = settings.accentIndex == index;
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return _buildColorBox(option, isSelected, settings, accent,
+                  isDark, border, textSecondary);
             }),
           ),
         ],
@@ -160,23 +315,28 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildColorBox(AccentColorOption option, bool isSelected,
-      SettingsProvider settings, Color currentAccent) {
-    final isLight = option.color.computeLuminance() > 0.5;
+  Widget _buildColorBox(
+      AppAccent option,
+      bool isSelected,
+      SettingsProvider settings,
+      Color currentAccent,
+      bool isDark,
+      Color border,
+      Color textSecondary) {
+    final accentToShow = isDark ? option.dark : option.light;
+    final isLight = accentToShow.computeLuminance() > 0.5;
 
     return InkWell(
       onTap: () {
-        settings.setAccentColor(SettingsProvider.accentColors.indexOf(option));
+        settings.setAccentColor(SettingsProvider.accents.indexOf(option));
       },
       child: Container(
         width: 100,
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? option.color.withValues(alpha: 0.15)
-              : Colors.transparent,
+          color: isSelected ? accentToShow.withAlpha(38) : Colors.transparent,
           border: Border.all(
-            color: isSelected ? option.color : terminalBorder,
+            color: isSelected ? accentToShow : border,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -187,30 +347,49 @@ class SettingsScreen extends StatelessWidget {
               style: GoogleFonts.jetBrainsMono(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: isSelected ? option.color : terminalTextSecondary,
+                color: isSelected ? accentToShow : textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: option.color,
-                border: Border.all(
-                  color: isSelected
-                      ? (isLight ? Colors.black : Colors.white)
-                      : terminalBorder,
-                  width: isSelected ? 2 : 1,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: option.dark,
+                    border: Border.all(
+                      color: isSelected
+                          ? (isLight ? Colors.black : Colors.white)
+                          : border,
+                      width: isSelected ? 1 : 1,
+                    ),
+                  ),
                 ),
-              ),
-              child: isSelected
-                  ? Icon(
-                      Icons.check,
-                      size: 14,
-                      color: isLight ? Colors.black : Colors.white,
-                    )
-                  : null,
+                const SizedBox(width: 2),
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: option.light,
+                    border: Border.all(
+                      color: isSelected
+                          ? (option.light.computeLuminance() > 0.5
+                              ? Colors.black
+                              : Colors.white)
+                          : border,
+                      width: isSelected ? 1 : 1,
+                    ),
+                  ),
+                ),
+                if (isSelected)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 2),
+                    child: Icon(Icons.check, size: 12, color: Colors.white),
+                  ),
+              ],
             ),
           ],
         ),
@@ -225,10 +404,13 @@ class SettingsScreen extends StatelessWidget {
     required bool value,
     required ValueChanged<bool> onChanged,
     required Color accent,
+    required Color textSecondary,
+    required Color border,
+    required Color textPrimary,
   }) {
     return Container(
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: terminalBorder, width: 1)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: border, width: 1)),
       ),
       child: SwitchListTile(
         secondary: Icon(icon, color: accent, size: 20),
@@ -236,8 +418,8 @@ class SettingsScreen extends StatelessWidget {
             style: GoogleFonts.jetBrainsMono(
                 fontSize: 12, fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle,
-            style: GoogleFonts.jetBrainsMono(
-                fontSize: 10, color: terminalTextSecondary)),
+            style:
+                GoogleFonts.jetBrainsMono(fontSize: 10, color: textSecondary)),
         value: value,
         onChanged: onChanged,
       ),
@@ -250,23 +432,29 @@ class SettingsScreen extends StatelessWidget {
     required String subtitle,
     required VoidCallback onTap,
     required Color accent,
+    required Color textPrimary,
+    required Color textSecondary,
+    required Color border,
+    Color? error,
     bool isDestructive = false,
   }) {
+    final textColor = isDestructive ? (error ?? error) : textPrimary;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        splashColor: accent.withValues(alpha: 0.1),
-        highlightColor: accent.withValues(alpha: 0.05),
+        splashColor: accent.withAlpha(25),
+        highlightColor: accent.withAlpha(13),
         child: Container(
           padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: terminalBorder, width: 1)),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: border, width: 1)),
           ),
           child: Row(
             children: [
               Icon(icon,
-                  color: isDestructive ? terminalError : accent, size: 20),
+                  color: isDestructive ? (error ?? error) : accent, size: 20),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
@@ -277,19 +465,18 @@ class SettingsScreen extends StatelessWidget {
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color:
-                            isDestructive ? terminalError : terminalTextPrimary,
+                        color: textColor,
                       ),
                     ),
                     Text(
                       subtitle,
                       style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10, color: terminalTextSecondary),
+                          fontSize: 10, color: textSecondary),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: terminalTextSecondary, size: 20),
+              Icon(Icons.chevron_right, color: textSecondary, size: 20),
             ],
           ),
         ),
@@ -298,14 +485,20 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _loadSampleData(BuildContext context) async {
-    final accent = context.read<SettingsProvider>().accentColor;
+    final settings = context.read<SettingsProvider>();
+    final bg = backgroundColor(context);
+    final surface = surfaceColor(context);
+    final border = borderColor(context);
+    final textSecondary = textSecondaryColor(context);
+    final accent = settings.accentColor;
+
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: terminalSurface,
+        backgroundColor: surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
+          side: BorderSide(color: border, width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -322,7 +515,7 @@ class SettingsScreen extends StatelessWidget {
               Text(
                 'This will clear all existing data and load fresh sample plans and workouts.',
                 style: GoogleFonts.jetBrainsMono(
-                    fontSize: 12, color: terminalTextSecondary),
+                    fontSize: 12, color: textSecondary),
               ),
               const SizedBox(height: 16),
               Row(
@@ -331,8 +524,7 @@ class SettingsScreen extends StatelessWidget {
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: Text('[CANCEL]',
-                        style: GoogleFonts.jetBrainsMono(
-                            color: terminalTextSecondary)),
+                        style: GoogleFonts.jetBrainsMono(color: textSecondary)),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
@@ -368,13 +560,20 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _confirmClearData(BuildContext context) {
+    final bg = backgroundColor(context);
+    final surface = surfaceColor(context);
+    final border = borderColor(context);
+    final textSecondary = textSecondaryColor(context);
+    final textPrimary = textPrimaryColor(context);
+    final error = errorColor(context);
+
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: terminalSurface,
+        backgroundColor: surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
+          side: BorderSide(color: border, width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -385,15 +584,13 @@ class SettingsScreen extends StatelessWidget {
               Text(
                 '> CLEAR ALL DATA?',
                 style: GoogleFonts.jetBrainsMono(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: terminalError),
+                    fontSize: 16, fontWeight: FontWeight.bold, color: error),
               ),
               const SizedBox(height: 16),
               Text(
                 'This will delete all workout plans and history. This action cannot be undone.',
                 style: GoogleFonts.jetBrainsMono(
-                    fontSize: 12, color: terminalTextSecondary),
+                    fontSize: 12, color: textSecondary),
               ),
               const SizedBox(height: 16),
               Row(
@@ -402,16 +599,13 @@ class SettingsScreen extends StatelessWidget {
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: Text('[CANCEL]',
-                        style: GoogleFonts.jetBrainsMono(
-                            color: terminalTextSecondary)),
+                        style: GoogleFonts.jetBrainsMono(color: textSecondary)),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () async {
                       await SampleDataSeeder.clearAllData();
-                      if (ctx.mounted) {
-                        Navigator.pop(ctx);
-                      }
+                      if (ctx.mounted) Navigator.pop(ctx);
                       if (context.mounted) {
                         context.read<WorkoutPlanProvider>().loadPlans();
                         context.read<WorkoutSessionProvider>().loadSessions();
@@ -425,7 +619,7 @@ class SettingsScreen extends StatelessWidget {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: terminalError,
+                      backgroundColor: error,
                       foregroundColor: Colors.white,
                     ),
                     child:
@@ -441,14 +635,19 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _showWeightUnitDialog(BuildContext context, SettingsProvider settings) {
+    final surface = surfaceColor(context);
+    final border = borderColor(context);
+    final textPrimary = textPrimaryColor(context);
+    final textSecondary = textSecondaryColor(context);
     final accent = settings.accentColor;
+
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: terminalSurface,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
+          side: BorderSide(color: border, width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -468,9 +667,11 @@ class SettingsScreen extends StatelessWidget {
                 groupValue: settings.weightUnit,
                 onChanged: (value) {
                   settings.setWeightUnit(value!);
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                 },
                 accent: accent,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
               ),
               _buildRadioTile(
                 title: 'POUNDS (LBS)',
@@ -478,9 +679,11 @@ class SettingsScreen extends StatelessWidget {
                 groupValue: settings.weightUnit,
                 onChanged: (value) {
                   settings.setWeightUnit(value!);
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                 },
                 accent: accent,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
               ),
             ],
           ),
@@ -495,6 +698,8 @@ class SettingsScreen extends StatelessWidget {
     required String groupValue,
     required ValueChanged<String?> onChanged,
     required Color accent,
+    required Color textPrimary,
+    required Color textSecondary,
   }) {
     final isSelected = value == groupValue;
     return InkWell(
@@ -519,7 +724,7 @@ class SettingsScreen extends StatelessWidget {
               title,
               style: GoogleFonts.jetBrainsMono(
                 fontSize: 12,
-                color: isSelected ? accent : terminalTextPrimary,
+                color: isSelected ? accent : textPrimary,
               ),
             ),
           ],
@@ -532,15 +737,17 @@ class SettingsScreen extends StatelessWidget {
 class _SectionHeader extends StatelessWidget {
   final String title;
   final Color accent;
+  final Color border;
 
-  const _SectionHeader({required this.title, required this.accent});
+  const _SectionHeader(
+      {required this.title, required this.accent, required this.border});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: terminalBorder, width: 1)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: border, width: 1)),
       ),
       child: Row(
         children: [

@@ -4,6 +4,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _refreshRateChannel = MethodChannel('com.example.gymapp/refresh_rate');
 
+class AppAccent {
+  final String name;
+  final Color dark;
+  final Color light;
+
+  const AppAccent({
+    required this.name,
+    required this.dark,
+    required this.light,
+  });
+
+  Color forBrightness(Brightness brightness) {
+    return brightness == Brightness.dark ? dark : light;
+  }
+}
+
 class SettingsProvider with ChangeNotifier {
   static const String _themeKey = 'theme_mode';
   static const String _accentColorKey = 'accent_color';
@@ -11,35 +27,44 @@ class SettingsProvider with ChangeNotifier {
   static const String _autoFillKey = 'auto_fill_last';
   static const String _highRefreshRateKey = 'high_refresh_rate';
 
-  static const Color defaultAccent = Color(0xFF00FF41);
+  static const List<AppAccent> accents = [
+    AppAccent(
+        name: 'ELECTRIC BLUE',
+        dark: Color(0xFF00A8FF),
+        light: Color(0xFF0077CC)),
+    AppAccent(
+        name: 'WARM AMBER', dark: Color(0xFFFF9500), light: Color(0xFFCC7700)),
+    AppAccent(
+        name: 'DEEP ORANGE', dark: Color(0xFFFF5722), light: Color(0xFFE64A19)),
+    AppAccent(
+        name: 'HOT PINK', dark: Color(0xFFFF1493), light: Color(0xFFCC1177)),
+    AppAccent(name: 'CYAN', dark: Color(0xFF00CED1), light: Color(0xFF00A5A8)),
+    AppAccent(
+        name: 'PURPLE', dark: Color(0xFF8B5CF6), light: Color(0xFF6D28D9)),
+    AppAccent(
+        name: 'STEEL GRAY', dark: Color(0xFFA0A0A0), light: Color(0xFF666666)),
+  ];
+
   ThemeMode _themeMode = ThemeMode.dark;
-  Color _accentColor = defaultAccent;
+  int _accentIndex = 0;
   String _weightUnit = 'kg';
   bool _autoFillLast = true;
   bool _highRefreshRate = true;
 
   ThemeMode get themeMode => _themeMode;
-  Color get accentColor => _accentColor;
+  int get accentIndex => _accentIndex;
   String get weightUnit => _weightUnit;
   bool get autoFillLast => _autoFillLast;
   bool get highRefreshRate => _highRefreshRate;
 
-  static const List<AccentColorOption> accentColors = [
-    AccentColorOption(
-        name: 'MATRIX GREEN',
-        color: Color(0xFF00FF41),
-        seed: Color(0xFF00FF41)),
-    AccentColorOption(
-        name: 'TERMINAL BLUE',
-        color: Color(0xFF00BFFF),
-        seed: Color(0xFF00BFFF)),
-    AccentColorOption(
-        name: 'AMBER', color: Color(0xFFFF6600), seed: Color(0xFFFF6600)),
-    AccentColorOption(
-        name: 'MAGENTA', color: Color(0xFFFF00FF), seed: Color(0xFFFF00FF)),
-    AccentColorOption(
-        name: 'GHOST WHITE', color: Color(0xFFFFFFFF), seed: Color(0xFFFFFFFF)),
-  ];
+  Color get accentColor => accents[_accentIndex].dark;
+
+  Color accentColorFor(Brightness brightness) {
+    return accents[_accentIndex].forBrightness(brightness);
+  }
+
+  Color get accentColorDark => accents[_accentIndex].dark;
+  Color get accentColorLight => accents[_accentIndex].light;
 
   SettingsProvider() {
     _loadSettings();
@@ -48,14 +73,12 @@ class SettingsProvider with ChangeNotifier {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final themeIndex = prefs.getInt(_themeKey) ?? 2;
+    final themeIndex = prefs.getInt(_themeKey) ?? 1;
     _themeMode = ThemeMode.values[themeIndex];
 
     final accentColorIndex = prefs.getInt(_accentColorKey) ?? 0;
-    if (accentColorIndex >= 0 && accentColorIndex < accentColors.length) {
-      _accentColor = accentColors[accentColorIndex].color;
-    } else {
-      _accentColor = defaultAccent;
+    if (accentColorIndex >= 0 && accentColorIndex < accents.length) {
+      _accentIndex = accentColorIndex;
     }
 
     _weightUnit = prefs.getString(_weightUnitKey) ?? 'kg';
@@ -73,24 +96,12 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setAccentColor(int index) async {
-    if (index >= 0 && index < accentColors.length) {
-      _accentColor = accentColors[index].color;
+    if (index >= 0 && index < accents.length) {
+      _accentIndex = index;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_accentColorKey, index);
       notifyListeners();
     }
-  }
-
-  int getAccentColorIndex() {
-    return accentColors.indexWhere((c) => c.color == _accentColor);
-  }
-
-  Color getAccentSeed() {
-    final index = getAccentColorIndex();
-    if (index < 0 || index >= accentColors.length) {
-      return accentColors[0].seed;
-    }
-    return accentColors[index].seed;
   }
 
   Future<void> setWeightUnit(String unit) async {
@@ -118,16 +129,4 @@ class SettingsProvider with ChangeNotifier {
     }
     notifyListeners();
   }
-}
-
-class AccentColorOption {
-  final String name;
-  final Color color;
-  final Color seed;
-
-  const AccentColorOption({
-    required this.name,
-    required this.color,
-    required this.seed,
-  });
 }

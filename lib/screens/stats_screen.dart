@@ -42,9 +42,9 @@ class _StatsScreenState extends State<StatsScreen> {
     final totalPRs = prs.length;
 
     return Scaffold(
-      backgroundColor: terminalBackground,
+      backgroundColor: backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         title: Text(
           '> STATISTICS',
           style: GoogleFonts.jetBrainsMono(
@@ -192,8 +192,8 @@ class _StatsScreenState extends State<StatsScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: terminalSurface,
-        border: Border.all(color: terminalBorder, width: 1),
+        color: surfaceColor(context),
+        border: Border.all(color: borderColor(context), width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -215,7 +215,7 @@ class _StatsScreenState extends State<StatsScreen> {
             Text(
               'Last 8 Weeks',
               style: GoogleFonts.jetBrainsMono(
-                  fontSize: 10, color: terminalTextSecondary),
+                  fontSize: 10, color: textSecondaryColor(context)),
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -231,7 +231,7 @@ class _StatsScreenState extends State<StatsScreen> {
                         return BarTooltipItem(
                           'Week $week\n${rod.toY.toInt()} workouts',
                           GoogleFonts.jetBrainsMono(
-                              fontSize: 10, color: terminalTextPrimary),
+                              fontSize: 10, color: textPrimaryColor(context)),
                         );
                       },
                     ),
@@ -277,7 +277,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     horizontalInterval: 1,
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
-                        color: terminalBorder,
+                        color: borderColor(context),
                         strokeWidth: 1,
                       );
                     },
@@ -309,15 +309,16 @@ class _StatsScreenState extends State<StatsScreen> {
     if (_selectedExercise == null) {
       return Container(
         decoration: BoxDecoration(
-          color: terminalSurface,
-          border: Border.all(color: terminalBorder, width: 1),
+          color: surfaceColor(context),
+          border: Border.all(color: borderColor(context), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Center(
             child: Text(
               '> No exercise data available',
-              style: GoogleFonts.jetBrainsMono(color: terminalTextSecondary),
+              style:
+                  GoogleFonts.jetBrainsMono(color: textSecondaryColor(context)),
             ),
           ),
         ),
@@ -329,8 +330,8 @@ class _StatsScreenState extends State<StatsScreen> {
     if (progression.isEmpty) {
       return Container(
         decoration: BoxDecoration(
-          color: terminalSurface,
-          border: Border.all(color: terminalBorder, width: 1),
+          color: surfaceColor(context),
+          border: Border.all(color: borderColor(context), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -339,8 +340,8 @@ class _StatsScreenState extends State<StatsScreen> {
               children: [
                 Text(
                   '> No data for $_selectedExercise',
-                  style:
-                      GoogleFonts.jetBrainsMono(color: terminalTextSecondary),
+                  style: GoogleFonts.jetBrainsMono(
+                      color: textSecondaryColor(context)),
                 ),
               ],
             ),
@@ -358,8 +359,8 @@ class _StatsScreenState extends State<StatsScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: terminalSurface,
-        border: Border.all(color: terminalBorder, width: 1),
+        color: surfaceColor(context),
+        border: Border.all(color: borderColor(context), width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -377,7 +378,7 @@ class _StatsScreenState extends State<StatsScreen> {
             Text(
               'Max Weight Over Time',
               style: GoogleFonts.jetBrainsMono(
-                  fontSize: 10, color: terminalTextSecondary),
+                  fontSize: 10, color: textSecondaryColor(context)),
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -445,7 +446,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
-                        color: terminalBorder,
+                        color: borderColor(context),
                         strokeWidth: 1,
                       );
                     },
@@ -464,7 +465,7 @@ class _StatsScreenState extends State<StatsScreen> {
                             radius: 4,
                             color: accent,
                             strokeWidth: 2,
-                            strokeColor: terminalSurface,
+                            strokeColor: surfaceColor(context),
                           );
                         },
                       ),
@@ -513,12 +514,12 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   Color _getProgressColor(List<Map<String, dynamic>> progression) {
-    if (progression.length < 2) return terminalTextSecondary;
+    if (progression.length < 2) return textSecondaryColor(context);
     final first = progression.first['maxWeight'] as double;
     final last = progression.last['maxWeight'] as double;
     if (last > first) return Colors.green;
-    if (last < first) return terminalError;
-    return terminalTextSecondary;
+    if (last < first) return errorColor(context);
+    return textSecondaryColor(context);
   }
 }
 
@@ -538,8 +539,8 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: terminalSurface,
-        border: Border.all(color: terminalBorder, width: 1),
+        color: surfaceColor(context),
+        border: Border.all(color: borderColor(context), width: 1),
       ),
       child: Column(
         children: [
@@ -555,7 +556,7 @@ class _SummaryCard extends StatelessWidget {
           Text(
             label,
             style: GoogleFonts.jetBrainsMono(
-                fontSize: 10, color: terminalTextSecondary),
+                fontSize: 10, color: textSecondaryColor(context)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -592,7 +593,7 @@ class _StatItem extends StatelessWidget {
         Text(
           label,
           style: GoogleFonts.jetBrainsMono(
-              fontSize: 10, color: terminalTextSecondary),
+              fontSize: 10, color: textSecondaryColor(context)),
         ),
       ],
     );

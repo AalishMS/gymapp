@@ -21,14 +21,16 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final accent = settings.accentColor;
+    final bg = backgroundColor(context);
+    final border = borderColor(context);
 
     return Scaffold(
-      backgroundColor: terminalBackground,
+      backgroundColor: bg,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(context, accent),
+            _buildHeader(context, accent, border),
             Expanded(
               child: Consumer<WorkoutPlanProvider>(
                 builder: (context, provider, child) {
@@ -46,11 +48,11 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, Color accent) {
+  Widget _buildHeader(BuildContext context, Color accent, Color border) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: terminalBorder, width: 1)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: border, width: 1)),
       ),
       child: Row(
         children: [
@@ -92,8 +94,8 @@ class HomeScreen extends StatelessWidget {
       required Color accent}) {
     return InkWell(
       onTap: onTap,
-      splashColor: accent.withValues(alpha: 0.2),
-      highlightColor: accent.withValues(alpha: 0.1),
+      splashColor: accent.withAlpha(51),
+      highlightColor: accent.withAlpha(26),
       child: Container(
         padding: const EdgeInsets.all(8),
         child: Icon(icon, color: accent, size: 22),
@@ -103,6 +105,8 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildEmptyState(
       BuildContext context, WorkoutPlanProvider provider, Color accent) {
+    final textSecondary = textSecondaryColor(context);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -113,7 +117,7 @@ class HomeScreen extends StatelessWidget {
               '> NO PLANS FOUND',
               style: GoogleFonts.jetBrainsMono(
                 fontSize: 16,
-                color: terminalTextSecondary,
+                color: textSecondary,
               ),
             ),
             const SizedBox(height: 8),
@@ -121,7 +125,7 @@ class HomeScreen extends StatelessWidget {
               'Create your first workout plan',
               style: GoogleFonts.jetBrainsMono(
                 fontSize: 12,
-                color: terminalTextSecondary,
+                color: textSecondary,
               ),
             ),
             const SizedBox(height: 32),
@@ -173,19 +177,26 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildPlanCard(
       BuildContext context, WorkoutPlan plan, int index, Color accent) {
+    final surface = surfaceColor(context);
+    final border = borderColor(context);
+    final textPrimary = textPrimaryColor(context);
+    final textSecondary = textSecondaryColor(context);
+
     return InkWell(
       onTap: () {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => WorkoutScreen(plan: plan, planIndex: index)));
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => WorkoutScreen(plan: plan, planIndex: index)));
       },
       onLongPress: () => _showPlanOptions(context, plan, index, accent),
-      splashColor: accent.withValues(alpha: 0.15),
-      highlightColor: accent.withValues(alpha: 0.08),
+      splashColor: accent.withAlpha(38),
+      highlightColor: accent.withAlpha(20),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: terminalSurface,
-          border: Border.all(color: terminalBorder, width: 1),
+          color: surface,
+          border: Border.all(color: border, width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,7 +225,7 @@ class HomeScreen extends StatelessWidget {
               style: GoogleFonts.jetBrainsMono(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: terminalTextPrimary,
+                color: textPrimary,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -224,7 +235,7 @@ class HomeScreen extends StatelessWidget {
               '${plan.exercises.length} EXERCISES',
               style: GoogleFonts.jetBrainsMono(
                 fontSize: 10,
-                color: terminalTextSecondary,
+                color: textSecondary,
               ),
             ),
           ],
@@ -235,13 +246,17 @@ class HomeScreen extends StatelessWidget {
 
   void _showPlanOptions(
       BuildContext context, WorkoutPlan plan, int index, Color accent) {
+    final surface = surfaceColor(context);
+    final border = borderColor(context);
+    final textSecondary = textSecondaryColor(context);
+
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: terminalSurface,
+        backgroundColor: surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: terminalBorder, width: 1),
+          side: BorderSide(color: border, width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -262,7 +277,7 @@ class HomeScreen extends StatelessWidget {
                 'Select action:',
                 style: GoogleFonts.jetBrainsMono(
                   fontSize: 12,
-                  color: terminalTextSecondary,
+                  color: textSecondary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -317,8 +332,7 @@ class HomeScreen extends StatelessWidget {
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('[CANCEL]',
-                    style: GoogleFonts.jetBrainsMono(
-                        color: terminalTextSecondary)),
+                    style: GoogleFonts.jetBrainsMono(color: textSecondary)),
               ),
             ],
           ),
@@ -333,8 +347,8 @@ class HomeScreen extends StatelessWidget {
       required Color accent}) {
     return InkWell(
       onTap: onTap,
-      splashColor: accent.withValues(alpha: 0.2),
-      highlightColor: accent.withValues(alpha: 0.1),
+      splashColor: accent.withAlpha(51),
+      highlightColor: accent.withAlpha(26),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -355,8 +369,10 @@ class HomeScreen extends StatelessWidget {
         Navigator.push(context,
             MaterialPageRoute(builder: (_) => const CreatePlanScreen()));
       },
-      backgroundColor: Colors.black,
-      foregroundColor: accent,
+      backgroundColor: accent,
+      foregroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.black
+          : Colors.white,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.zero,

@@ -60,10 +60,10 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Dialog(
-              backgroundColor: terminalSurface,
+              backgroundColor: surfaceColor(context),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.zero,
-                side: const BorderSide(color: terminalBorder, width: 1),
+                side: BorderSide(color: borderColor(context), width: 1),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -83,7 +83,7 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                     Text(
                       'SELECT CATEGORY',
                       style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10, color: terminalTextSecondary),
+                          fontSize: 10, color: textSecondaryColor(context)),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
@@ -113,7 +113,7 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                       Text(
                         'SELECT EXERCISE',
                         style: GoogleFonts.jetBrainsMono(
-                            fontSize: 10, color: terminalTextSecondary),
+                            fontSize: 10, color: textSecondaryColor(context)),
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
@@ -144,7 +144,7 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                     Text(
                       'OR ENTER CUSTOM EXERCISE',
                       style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10, color: terminalTextSecondary),
+                          fontSize: 10, color: textSecondaryColor(context)),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -180,7 +180,7 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                           onPressed: () => Navigator.pop(context),
                           child: Text('[CANCEL]',
                               style: GoogleFonts.jetBrainsMono(
-                                  color: terminalTextSecondary)),
+                                  color: textSecondaryColor(context))),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton(
@@ -192,7 +192,7 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                                   content: Text(
                                       '> Please select or enter an exercise',
                                       style: GoogleFonts.jetBrainsMono()),
-                                  backgroundColor: terminalError,
+                                  backgroundColor: errorColor(context),
                                 ),
                               );
                               return;
@@ -231,7 +231,7 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
         SnackBar(
           content: Text('> Plan name cannot be empty',
               style: GoogleFonts.jetBrainsMono()),
-          backgroundColor: terminalError,
+          backgroundColor: errorColor(context),
         ),
       );
       return;
@@ -242,7 +242,7 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
         SnackBar(
           content: Text('> Add at least one exercise',
               style: GoogleFonts.jetBrainsMono()),
-          backgroundColor: terminalError,
+          backgroundColor: errorColor(context),
         ),
       );
       return;
@@ -261,9 +261,9 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
     final accent = context.watch<SettingsProvider>().accentColor;
 
     return Scaffold(
-      backgroundColor: terminalBackground,
+      backgroundColor: backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: terminalSurface,
+        backgroundColor: surfaceColor(context),
         title: Text(
           '> EDIT PLAN',
           style: GoogleFonts.jetBrainsMono(
@@ -302,30 +302,30 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                border: Border.all(color: terminalBorder),
+                border: Border.all(color: borderColor(context)),
               ),
               child: Row(
                 children: [
                   Icon(Icons.info_outline,
-                      size: 16, color: terminalTextSecondary),
+                      size: 16, color: textSecondaryColor(context)),
                   const SizedBox(width: 8),
                   Text(
                     'Tap [+ ADD EXERCISE] below to add exercises',
                     style: GoogleFonts.jetBrainsMono(
-                        fontSize: 12, color: terminalTextSecondary),
+                        fontSize: 12, color: textSecondaryColor(context)),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            const Divider(color: terminalBorder),
+            Divider(color: borderColor(context)),
             Expanded(
               child: _exercises.isEmpty
                   ? Center(
                       child: Text(
                         '> No exercises added yet',
                         style: GoogleFonts.jetBrainsMono(
-                            color: terminalTextSecondary),
+                            color: textSecondaryColor(context)),
                       ),
                     )
                   : ListView.builder(
@@ -335,8 +335,9 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           decoration: BoxDecoration(
-                            color: terminalSurface,
-                            border: Border.all(color: terminalBorder, width: 1),
+                            color: surfaceColor(context),
+                            border: Border.all(
+                                color: borderColor(context), width: 1),
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(12),
@@ -370,7 +371,7 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                                         '${exercise.sets} SETS',
                                         style: GoogleFonts.jetBrainsMono(
                                             fontSize: 10,
-                                            color: terminalTextSecondary),
+                                            color: textSecondaryColor(context)),
                                       ),
                                     ],
                                   ),
@@ -381,13 +382,14 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
                                       _exercises.removeAt(index);
                                     });
                                   },
-                                  splashColor:
-                                      terminalError.withValues(alpha: 0.2),
-                                  highlightColor:
-                                      terminalError.withValues(alpha: 0.1),
+                                  splashColor: errorColor(context)
+                                      .withValues(alpha: 0.2),
+                                  highlightColor: errorColor(context)
+                                      .withValues(alpha: 0.1),
                                   child: Text('[DEL]',
                                       style: GoogleFonts.jetBrainsMono(
-                                          fontSize: 12, color: terminalError)),
+                                          fontSize: 12,
+                                          color: errorColor(context))),
                                 ),
                               ],
                             ),

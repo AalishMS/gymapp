@@ -77,8 +77,8 @@ class ExerciseCard extends StatelessWidget {
                 ),
               InkWell(
                 onTap: () => onAddNote(exerciseIndex),
-                child: const Icon(Icons.note_add,
-                    size: 20, color: terminalTextSecondary),
+                child: Icon(Icons.note_add,
+                    size: 20, color: textSecondaryColor(context)),
               ),
               const SizedBox(width: 4),
               InkWell(
@@ -106,7 +106,7 @@ class ExerciseCard extends StatelessWidget {
               child: Text(
                 '> No sets added yet',
                 style: GoogleFonts.jetBrainsMono(
-                    fontSize: 12, color: terminalTextSecondary),
+                    fontSize: 12, color: textSecondaryColor(context)),
               ),
             )
           else
