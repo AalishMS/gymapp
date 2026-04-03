@@ -112,6 +112,12 @@ Central service for all Hive database operations. Exposes:
 - None reported yet
 
 ## Recent Changes
+- Fixed light mode: Replaced hardcoded terminalX constants with theme-aware functions across ALL screens and widgets:
+  - screen files: create_plan_screen, edit_plan_screen, history_screen, settings_screen  
+  - widget files: workout/exercise_card, workout/workout_dialogs
+  - Replaced: terminalSurface→surfaceColor, terminalBorder→borderColor, terminalTextSecondary→textSecondaryColor, terminalError→errorColor, terminalBackground→backgroundColor
+  - All screens now respect light/dark theme setting
+- Fixed week tab navbar scroll position: Added ScrollController to jump to selected week on initial load (WidgetsBinding.instance.addPostFrameCallback in initState)
 - Fixed gesture conflicts in workout_screen.dart:
   - Week swipe: Implemented early directional claiming with angle-based disambiguation (abs(dx)/abs(dy) > 1.5 for horizontal, abs(dy)/abs(dx) > 1.0 for vertical) once movement > 10px
   - Swipe triggers only when horizontal claimed AND total dx > 40px at onEnd
