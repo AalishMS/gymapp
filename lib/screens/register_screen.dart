@@ -11,7 +11,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
@@ -21,7 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -45,17 +45,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _errorMessage = null;
     });
 
-    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
+    if (email.isEmpty || password.isEmpty) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Username and password required';
+        _errorMessage = 'Email and password required';
       });
       return;
     }
 
-    final success = await _authService.register(username, password);
+    final success = await _authService.register(email, password);
 
     if (mounted) {
       setState(() {
@@ -112,11 +112,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildTerminalLabel('> USERNAME:', textSecondary),
+                      _buildTerminalLabel('> EMAIL:', textSecondary),
                       const SizedBox(height: 8),
                       _buildTextField(
-                        controller: _usernameController,
-                        hintText: 'choose username',
+                        controller: _emailController,
+                        hintText: 'enter email',
                         textPrimary: textPrimary,
                         border: border,
                         accent: accent,
