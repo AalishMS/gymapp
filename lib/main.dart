@@ -7,6 +7,8 @@ import 'providers/progression_provider.dart';
 import 'providers/settings_provider.dart';
 import 'services/hive_service.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -109,7 +111,12 @@ class _MyAppState extends State<MyApp> {
             theme: buildTheme(accentLight, Brightness.light),
             darkTheme: buildTheme(accentDark, Brightness.dark),
             themeMode: settings.themeMode,
-            home: const HomeScreen(),
+            initialRoute: '/login',
+            routes: {
+              '/login': (context) => const LoginScreen(),
+              '/register': (context) => const RegisterScreen(),
+              '/home': (context) => const HomeScreen(),
+            },
           );
         },
       ),
