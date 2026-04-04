@@ -15,8 +15,10 @@ class AuthService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
+      print('Register response: ${response.statusCode} ${response.body}');
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
+      print('Register error: $e');
       return false;
     }
   }
@@ -28,6 +30,7 @@ class AuthService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
+      print('Login response: ${response.statusCode} ${response.body}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['access_token'] ?? data['token'];
