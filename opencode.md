@@ -21,6 +21,7 @@ A mobile gym tracking app built with Flutter that allows users to create workout
 | `lib/main.dart` | App entry point, initializes Hive, sets up providers and MaterialApp theme |
 | `lib/models/` | Hive data models with adapters |
 | `lib/providers/` | State management classes using Provider pattern |
+| `lib/repositories/` | Repository layer (WorkoutPlanRepository, WorkoutSessionRepository, StatsRepository) |
 | `lib/screens/` | UI screens/pages |
 | `lib/services/` | Business logic services (HiveService, PRTrackingService, SampleDataSeeder) |
 | `lib/data/exercise_library.dart` | Pre-defined exercise database by category |
@@ -66,6 +67,12 @@ Central service for all Hive database operations. Exposes:
 - **Query Methods**: `getSessionsForPlan()`, `getWeeksForPlan()`, `getSessionForPlanAndWeek()`
 - **Statistics**: `getExercisePR()`, `getAllExerciseNames()`, `getAllExercisePRs()`, `getExerciseProgression()`, `getWorkoutsThisWeek()`, `getWorkoutFrequency()`
 - **Utilities**: `clearAllPlans()`, `clearAllSessions()`, `renameSessionWeek()`, `deleteSessionForPlanAndWeek()`
+
+### Repositories
+Repository layer wrapping HiveService for clean architecture:
+- **WorkoutPlanRepository** - Wraps plan CRUD: `getPlans()`, `addPlan()`, `updatePlan()`, `deletePlan()`
+- **WorkoutSessionRepository** - Wraps session CRUD + queries: `getSessions()`, `addSession()`, `deleteSession()`, `updateSession()`, `getSessionsForPlan()`, `getWeeksForPlan()`, `getSessionForPlanAndWeek()`, `getLastSessionForExercise()`
+- **StatsRepository** - Wraps statistics methods: `getExercisePR()`, `getAllExerciseNames()`, `getAllExercisePRs()`, `getExerciseProgression()`, `getWorkoutsThisWeek()`, `getWorkoutFrequency()`
 
 ### Other Services
 - `PRTrackingService` - Checks for new personal records
@@ -129,6 +136,19 @@ Central service for all Hive database operations. Exposes:
 - Added duplicate set button in create_plan_screen
 - Fixed edit_plan_screen exercises not loading issue
 - Added "Load Sample Data" button that clears and refreshes sample data
+
+## Repository Layer Refactoring
+- Added `lib/repositories/` folder with three repository classes:
+  - `WorkoutPlanRepository` - wraps plan CRUD operations
+  - `WorkoutSessionRepository` - wraps session CRUD + query methods
+  - `StatsRepository` - wraps statistics methods
+- Updated providers and services to use repositories instead of calling HiveService directly:
+  - `WorkoutPlanProvider` → uses `WorkoutPlanRepository`
+  - `WorkoutSessionProvider` → uses `WorkoutSessionRepository`
+  - `ProgressionProvider` → uses `WorkoutSessionRepository`
+  - `stats_screen.dart` → uses `StatsRepository` + `WorkoutSessionRepository`
+  - `PRTrackingService` → uses `StatsRepository`
+- `flutter analyze` passes with no errors
 
 ## Priority 2 Refactoring
 - Split workout_screen.dart (1739→704 lines) into separate widget files:

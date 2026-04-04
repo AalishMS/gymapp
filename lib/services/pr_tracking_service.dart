@@ -1,5 +1,5 @@
 import '../models/exercise.dart';
-import '../services/hive_service.dart';
+import '../repositories/stats_repository.dart';
 
 class PRResult {
   final String exerciseName;
@@ -20,6 +20,8 @@ class PRResult {
 }
 
 class PRTrackingService {
+  static final StatsRepository _statsRepo = StatsRepository();
+
   static List<PRResult> checkForNewPRs(List<Exercise> exercises) {
     final results = <PRResult>[];
 
@@ -27,7 +29,7 @@ class PRTrackingService {
       if (exercise.sets.isEmpty) continue;
 
       for (var set in exercise.sets) {
-        final currentPR = HiveService.getExercisePR(exercise.name);
+        final currentPR = _statsRepo.getExercisePR(exercise.name);
 
         if (set.weight > currentPR) {
           results.add(PRResult(

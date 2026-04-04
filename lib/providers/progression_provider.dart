@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 import '../models/set.dart' as gym;
 import '../models/exercise.dart';
-import '../services/hive_service.dart';
+import '../repositories/workout_session_repository.dart';
 
 class ProgressionProvider with ChangeNotifier {
+  final WorkoutSessionRepository _repository = WorkoutSessionRepository();
+
   String getSuggestion(String exerciseName, int targetReps) {
-    final lastSession = HiveService.getLastSessionForExercise(exerciseName);
-    
+    final lastSession = _repository.getLastSessionForExercise(exerciseName);
+
     if (lastSession == null) {
       return 'No previous data';
     }
@@ -25,7 +27,7 @@ class ProgressionProvider with ChangeNotifier {
 
     // Check if all sets were completed (all have reps > 0)
     bool allSetsCompleted = lastExercise.sets.every((set) => set.reps > 0);
-    
+
     if (!allSetsCompleted) {
       return 'Last: ${_formatSets(lastExercise.sets)} → Try completing all sets';
     }

@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
 import '../models/workout_plan.dart';
-import '../services/hive_service.dart';
+import '../repositories/workout_plan_repository.dart';
 
 class WorkoutPlanProvider with ChangeNotifier {
+  final WorkoutPlanRepository _repository = WorkoutPlanRepository();
   List<WorkoutPlan> _plans = [];
 
   List<WorkoutPlan> get plans => _plans;
@@ -12,22 +13,22 @@ class WorkoutPlanProvider with ChangeNotifier {
   }
 
   void loadPlans() {
-    _plans = HiveService.getPlans();
+    _plans = _repository.getPlans();
     notifyListeners();
   }
 
   Future<void> addPlan(WorkoutPlan plan) async {
-    await HiveService.addPlan(plan);
+    await _repository.addPlan(plan);
     loadPlans();
   }
 
   Future<void> updatePlan(int index, WorkoutPlan plan) async {
-    await HiveService.updatePlan(index, plan);
+    await _repository.updatePlan(index, plan);
     loadPlans();
   }
 
   Future<void> deletePlan(int index) async {
-    await HiveService.deletePlan(index);
+    await _repository.deletePlan(index);
     loadPlans();
   }
 }

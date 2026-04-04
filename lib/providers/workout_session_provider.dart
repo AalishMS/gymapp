@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
 import '../models/workout_session.dart';
 import '../models/exercise.dart';
-import '../services/hive_service.dart';
+import '../repositories/workout_session_repository.dart';
 
 class WorkoutSessionProvider with ChangeNotifier {
+  final WorkoutSessionRepository _repository = WorkoutSessionRepository();
   List<WorkoutSession> _sessions = [];
   WorkoutSession? _currentSession;
   int _currentWeek = 1;
@@ -17,7 +18,7 @@ class WorkoutSessionProvider with ChangeNotifier {
   }
 
   void loadSessions() {
-    _sessions = HiveService.getSessions();
+    _sessions = _repository.getSessions();
     notifyListeners();
   }
 
@@ -45,27 +46,27 @@ class WorkoutSessionProvider with ChangeNotifier {
 
   Future<void> saveWorkout() async {
     if (_currentSession != null) {
-      await HiveService.addSession(_currentSession!);
+      await _repository.addSession(_currentSession!);
       _currentSession = null;
       loadSessions();
     }
   }
 
   Future<void> deleteSession(int index) async {
-    await HiveService.deleteSession(index);
+    await _repository.deleteSession(index);
     loadSessions();
   }
 
   Future<void> updateSession(int index, WorkoutSession session) async {
-    await HiveService.updateSession(index, session);
+    await _repository.updateSession(index, session);
     loadSessions();
   }
 
   List<int> getWeeksForPlan(String planName) {
-    return HiveService.getWeeksForPlan(planName);
+    return _repository.getWeeksForPlan(planName);
   }
 
   WorkoutSession? getSessionForPlanAndWeek(String planName, int week) {
-    return HiveService.getSessionForPlanAndWeek(planName, week);
+    return _repository.getSessionForPlanAndWeek(planName, week);
   }
 }

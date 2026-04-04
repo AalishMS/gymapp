@@ -3,7 +3,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
-import '../services/hive_service.dart';
+import '../repositories/stats_repository.dart';
+import '../repositories/workout_session_repository.dart';
 import '../theme/app_theme.dart';
 
 class StatsScreen extends StatefulWidget {
@@ -14,6 +15,8 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
+  final StatsRepository _statsRepo = StatsRepository();
+  final WorkoutSessionRepository _sessionRepo = WorkoutSessionRepository();
   String? _selectedExercise;
   List<String> _exerciseNames = [];
   bool _showOverall = true;
@@ -25,7 +28,7 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   void _loadExerciseNames() {
-    _exerciseNames = HiveService.getAllExerciseNames();
+    _exerciseNames = _statsRepo.getAllExerciseNames();
     if (_exerciseNames.isNotEmpty) {
       _selectedExercise = _exerciseNames.first;
     }
@@ -35,10 +38,10 @@ class _StatsScreenState extends State<StatsScreen> {
   @override
   Widget build(BuildContext context) {
     final accent = context.watch<SettingsProvider>().accentColor;
-    final frequency = HiveService.getWorkoutFrequency(8);
-    final totalWorkouts = HiveService.getSessions().length;
-    final workoutsThisWeek = HiveService.getWorkoutsThisWeek();
-    final prs = HiveService.getAllExercisePRs();
+    final frequency = _statsRepo.getWorkoutFrequency(8);
+    final totalWorkouts = _sessionRepo.getSessions().length;
+    final workoutsThisWeek = _statsRepo.getWorkoutsThisWeek();
+    final prs = _statsRepo.getAllExercisePRs();
     final totalPRs = prs.length;
 
     return Scaffold(
@@ -170,7 +173,7 @@ class _StatsScreenState extends State<StatsScreen> {
         border: OutlineInputBorder(),
       ),
       items: _exerciseNames.map((name) {
-        final pr = HiveService.getExercisePR(name);
+        final pr = _statsRepo.getExercisePR(name);
         return DropdownMenuItem(
           value: name,
           child: Text('$name (PR: ${pr}kg)',
@@ -325,7 +328,7 @@ class _StatsScreenState extends State<StatsScreen> {
       );
     }
 
-    final progression = HiveService.getExerciseProgression(_selectedExercise!);
+    final progression = _statsRepo.getExerciseProgression(_selectedExercise!);
 
     if (progression.isEmpty) {
       return Container(
