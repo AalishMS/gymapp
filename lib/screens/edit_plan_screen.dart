@@ -6,7 +6,6 @@ import '../providers/settings_provider.dart';
 import '../models/workout_plan.dart';
 import '../models/exercise_template.dart';
 import '../data/exercise_library.dart';
-import '../services/hive_service.dart';
 import '../theme/app_theme.dart';
 
 class EditPlanScreen extends StatefulWidget {
@@ -32,14 +31,19 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.plan.name);
 
-    final plans = HiveService.getPlans();
-    final freshPlan =
-        plans.length > widget.planIndex ? plans[widget.planIndex] : null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final planProvider = context.read<WorkoutPlanProvider>();
+      final plans = planProvider.plans;
+      final freshPlan =
+          plans.length > widget.planIndex ? plans[widget.planIndex] : null;
 
-    _exercises = freshPlan?.exercises
-            .map((e) => ExerciseTemplate(name: e.name, sets: e.sets))
-            .toList() ??
-        [];
+      setState(() {
+        _exercises = freshPlan?.exercises
+                .map((e) => ExerciseTemplate(name: e.name, sets: e.sets))
+                .toList() ??
+            [];
+      });
+    });
   }
 
   @override

@@ -178,6 +178,98 @@ class WorkoutSessionRepository {
     return null;
   }
 
+  Set? getLastSetForExercise(String exerciseName) {
+    for (var session in _cachedSessions) {
+      for (var exercise in session.exercises) {
+        if (exercise.name.toLowerCase() == exerciseName.toLowerCase() &&
+            exercise.sets.isNotEmpty) {
+          return exercise.sets.last;
+        }
+      }
+    }
+    return null;
+  }
+
+  Future<void> renameSessionWeek(
+      String planName, int oldWeek, int newWeek) async {
+    final isOnline = await _connectivityService.isOnline();
+
+    if (!isOnline) {
+      throw Exception('Cannot modify sessions offline');
+    }
+
+    // Find sessions to update
+    final sessionsToUpdate = _cachedSessions
+        .where((s) =>
+            s.planName.toLowerCase() == planName.toLowerCase() &&
+            s.weekNumber == oldWeek)
+        .toList();
+
+    // Update each session
+    for (var session in sessionsToUpdate) {
+      if (session.id != null) {
+        final body = {
+          'plan_name': session.planName,
+          'date': session.date.toIso8601String(),
+          'week_number': newWeek,
+          'exercises': session.exercises
+              .map((e) => {
+                    'name': e.name,
+                    'note': e.note,
+                    'order_index': e.orderIndex,
+                    'sets': e.sets
+                        .map((s) => {
+                              'reps': s.reps,
+                              'weight': s.weight,
+                              'rpe': s.rpe,
+                              'note': s.note,
+                            })
+                        .toList(),
+                  })
+              .toList(),
+        };
+        final response = await _apiService.put('/sessions/${session.id}', body);
+        if (response.statusCode != 200) {
+          throw Exception(
+              'Failed to update session: ${response.statusCode} ${response.body}');
+        }
+      }
+    }
+
+    // Refresh cache
+    await getSessionsAsync();
+  }
+
+  Future<void> deleteSessionForPlanAndWeek(
+      String planName, int weekNumber) async {
+    final isOnline = await _connectivityService.isOnline();
+
+    if (!isOnline) {
+      throw Exception('Cannot modify sessions offline');
+    }
+
+    // Find sessions to delete
+    final sessionsToDelete = _cachedSessions
+        .where((s) =>
+            s.planName.toLowerCase() == planName.toLowerCase() &&
+            s.weekNumber == weekNumber)
+        .toList();
+
+    // Delete each session
+    for (var session in sessionsToDelete) {
+      if (session.id != null) {
+        final response = await _apiService.delete('/sessions/${session.id}');
+        if (response.statusCode != 204) {
+          throw Exception(
+              'Failed to delete session: ${response.statusCode} ${response.body}');
+        }
+      }
+    }
+
+    // Refresh cache
+    await getSessionsAsync();
+  }
+
   int get totalWorkouts => _cachedSessions.length;
 
   int get workoutsThisWeek {

@@ -9,7 +9,6 @@ import '../models/set.dart' as gym;
 import '../providers/workout_plan_provider.dart';
 import '../providers/workout_session_provider.dart';
 import '../providers/settings_provider.dart';
-import '../services/hive_service.dart';
 import '../services/pr_tracking_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/fade_page_route.dart';
@@ -36,8 +35,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   @override
   void initState() {
     super.initState();
-    _loadWeeks();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadWeeks();
       _scrollToSelectedWeek();
     });
   }
@@ -57,7 +56,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   void _loadWeeks() {
-    final existingWeeks = HiveService.getWeeksForPlan(widget.plan.name);
+    final sessionProvider = context.read<WorkoutSessionProvider>();
+    final existingWeeks = sessionProvider.getWeeksForPlan(widget.plan.name);
     if (existingWeeks.isEmpty) {
       _weeks = [1];
     } else {
@@ -72,18 +72,20 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   void _loadSessionForCurrentWeek() {
+    final sessionProvider = context.read<WorkoutSessionProvider>();
     final week = _weeks[_currentWeekIndex];
     final existingSession =
-        HiveService.getSessionForPlanAndWeek(widget.plan.name, week);
+        sessionProvider.getSessionForPlanAndWeek(widget.plan.name, week);
     if (existingSession != null) {
       _weekSessions[week] = existingSession;
     }
   }
 
   gym.Set? _getLastSetForExerciseInPlan(String exerciseName) {
+    final sessionProvider = context.read<WorkoutSessionProvider>();
     final currentWeek = _weeks[_currentWeekIndex];
     if (currentWeek > 1) {
-      final prevWeekSession = HiveService.getSessionForPlanAndWeek(
+      final prevWeekSession = sessionProvider.getSessionForPlanAndWeek(
         widget.plan.name,
         currentWeek - 1,
       );
@@ -96,7 +98,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         }
       }
     }
-    return HiveService.getLastSetForExercise(exerciseName);
+    return sessionProvider.getLastSetForExercise(exerciseName);
   }
 
   Future<void> _onWeekChanged(int newIndex) async {
@@ -104,7 +106,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     setState(() {
       _currentWeekIndex = newIndex;
     });
-    _loadSessionForCurrentWeek();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSessionForCurrentWeek();
+    });
   }
 
   Future<void> _addNewWeek() async {
@@ -154,7 +158,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
     final prevWeek = _currentWeek - 1;
     if (prevWeek >= 1) {
-      final prevSession = HiveService.getSessionForPlanAndWeek(
+      final sessionProvider = context.read<WorkoutSessionProvider>();
+      final prevSession = sessionProvider.getSessionForPlanAndWeek(
         widget.plan.name,
         prevWeek,
       );
@@ -450,7 +455,21 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         setState(() {
           _weeks[index] = newWeek;
         });
-        await HiveService.renameSessionWeek(widget.plan.name, week, newWeek);
+        try {
+          final sessionProvider = context.read<WorkoutSessionProvider>();
+          await sessionProvider.renameSessionWeek(
+              widget.plan.name, week, newWeek);
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('> Error renaming week: ${e.toString()}',
+                    style: GoogleFonts.jetBrainsMono()),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
       },
     );
   }
@@ -473,16 +492,32 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       week: week,
     );
 
-    if (confirmed) {
-      await HiveService.deleteSessionForPlanAndWeek(widget.plan.name, week);
-      setState(() {
-        _weeks.removeAt(index);
-        if (_currentWeekIndex >= _weeks.length) {
-          _currentWeekIndex = _weeks.length - 1;
-        } else if (_currentWeekIndex > index) {
-          _currentWeekIndex -= 1;
+    if (confirmed && mounted) {
+      try {
+        final sessionProvider = context.read<WorkoutSessionProvider>();
+        await sessionProvider.deleteSessionForPlanAndWeek(
+            widget.plan.name, week);
+        if (mounted) {
+          setState(() {
+            _weeks.removeAt(index);
+            if (_currentWeekIndex >= _weeks.length) {
+              _currentWeekIndex = _weeks.length - 1;
+            } else if (_currentWeekIndex > index) {
+              _currentWeekIndex -= 1;
+            }
+          });
         }
-      });
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('> Error deleting week: ${e.toString()}',
+                  style: GoogleFonts.jetBrainsMono()),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/workout_session.dart';
 import '../models/exercise.dart';
+import '../models/set.dart' as gym;
 import '../repositories/workout_session_repository.dart';
 
 class WorkoutSessionProvider with ChangeNotifier {
@@ -97,5 +98,35 @@ class WorkoutSessionProvider with ChangeNotifier {
 
   WorkoutSession? getSessionForPlanAndWeek(String planName, int week) {
     return _repository.getSessionForPlanAndWeek(planName, week);
+  }
+
+  gym.Set? getLastSetForExercise(String exerciseName) {
+    return _repository.getLastSetForExercise(exerciseName);
+  }
+
+  Future<void> renameSessionWeek(
+      String planName, int oldWeek, int newWeek) async {
+    try {
+      _error = null;
+      await _repository.renameSessionWeek(planName, oldWeek, newWeek);
+      loadSessions();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> deleteSessionForPlanAndWeek(
+      String planName, int weekNumber) async {
+    try {
+      _error = null;
+      await _repository.deleteSessionForPlanAndWeek(planName, weekNumber);
+      loadSessions();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
   }
 }
