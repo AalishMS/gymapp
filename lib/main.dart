@@ -102,22 +102,31 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: _settingsProvider),
       ],
       child: Consumer<SettingsProvider>(
-        builder: (context, settings, child) {
-          final accentDark = settings.accentColorDark;
-          final accentLight = settings.accentColorLight;
+        builder: (context, settingsProvider, child) {
+          final accentDark = settingsProvider.accentColorDark;
+          final accentLight = settingsProvider.accentColorLight;
 
           return MaterialApp(
             title: 'OpenGym',
             debugShowCheckedModeBanner: false,
             theme: buildTheme(accentLight, Brightness.light),
             darkTheme: buildTheme(accentDark, Brightness.dark),
-            themeMode: settings.themeMode,
-            initialRoute: '/splash',
-            routes: {
-              '/splash': (context) => const SplashScreen(),
-              '/login': (context) => const LoginScreen(),
-              '/register': (context) => const RegisterScreen(),
-              '/home': (context) => const HomeScreen(),
+            themeMode: settingsProvider.themeMode,
+            onGenerateRoute: (routeSettings) {
+              switch (routeSettings.name) {
+                case '/splash':
+                  return MaterialPageRoute(
+                      builder: (_) => const SplashScreen());
+                case '/login':
+                  return MaterialPageRoute(builder: (_) => const LoginScreen());
+                case '/register':
+                  return MaterialPageRoute(
+                      builder: (_) => const RegisterScreen());
+                case '/home':
+                  return MaterialPageRoute(builder: (_) => const HomeScreen());
+                default:
+                  return MaterialPageRoute(builder: (_) => const LoginScreen());
+              }
             },
           );
         },
