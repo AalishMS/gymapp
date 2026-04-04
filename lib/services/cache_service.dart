@@ -9,12 +9,18 @@ class CacheService {
 
   // WorkoutPlan cache operations
   Future<void> savePlans(List<WorkoutPlan> plans) async {
+    if (!Hive.isBoxOpen(_plansCacheBox)) {
+      await Hive.openBox(_plansCacheBox);
+    }
     final box = Hive.box(_plansCacheBox);
     final jsonList = plans.map((plan) => jsonEncode(plan.toJson())).toList();
     await box.put('plans', jsonList);
   }
 
   Future<List<WorkoutPlan>> getPlans() async {
+    if (!Hive.isBoxOpen(_plansCacheBox)) {
+      await Hive.openBox(_plansCacheBox);
+    }
     final box = Hive.box(_plansCacheBox);
     final jsonList =
         box.get('plans', defaultValue: <dynamic>[]) as List<dynamic>;
@@ -26,6 +32,9 @@ class CacheService {
 
   // WorkoutSession cache operations
   Future<void> saveSessions(List<WorkoutSession> sessions) async {
+    if (!Hive.isBoxOpen(_sessionsCacheBox)) {
+      await Hive.openBox(_sessionsCacheBox);
+    }
     final box = Hive.box(_sessionsCacheBox);
     final jsonList =
         sessions.map((session) => jsonEncode(session.toJson())).toList();
@@ -33,6 +42,9 @@ class CacheService {
   }
 
   Future<List<WorkoutSession>> getSessions() async {
+    if (!Hive.isBoxOpen(_sessionsCacheBox)) {
+      await Hive.openBox(_sessionsCacheBox);
+    }
     final box = Hive.box(_sessionsCacheBox);
     final jsonList =
         box.get('sessions', defaultValue: <dynamic>[]) as List<dynamic>;
@@ -44,6 +56,12 @@ class CacheService {
 
   // Clear all cache
   Future<void> clearAll() async {
+    if (!Hive.isBoxOpen(_plansCacheBox)) {
+      await Hive.openBox(_plansCacheBox);
+    }
+    if (!Hive.isBoxOpen(_sessionsCacheBox)) {
+      await Hive.openBox(_sessionsCacheBox);
+    }
     final plansBox = Hive.box(_plansCacheBox);
     final sessionsBox = Hive.box(_sessionsCacheBox);
     await plansBox.clear();
