@@ -1,0 +1,177 @@
+# AGENTS.md - OpenGym Development Guide
+
+This file provides guidance for AI agents working on the OpenGym Flutter project.
+
+## Project Overview
+
+- **Type**: Flutter mobile app (gym tracking)
+- **State Management**: Provider with ChangeNotifier
+- **Local Storage**: Hive (NoSQL)
+- **Architecture**: Clean separation - models, providers, services, screens, widgets, theme
+
+---
+
+## Build & Development Commands
+
+### Running the App
+```bash
+flutter run                           # Run on connected device
+flutter run -d <device_id>           # Run on specific device
+flutter build apk --release           # Build Android APK
+flutter build apk --debug             # Build debug APK
+```
+
+### Analysis & Linting
+```bash
+flutter analyze                       # Run static analysis (required after every change)
+flutter analyze --no-fatal-warnings  # Run but don't fail on warnings
+```
+
+### Testing
+```bash
+flutter test                          # Run all tests
+flutter test test/widget_test.dart    # Run single test file
+flutter test --name="Basic"           # Run tests matching name pattern
+flutter test test/widget_test.dart --name="Basic widget test"
+```
+
+### Code Generation (Hive Models)
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+**Required** whenever Hive model files (.dart) are modified. Run `flutter analyze` after.
+
+---
+
+## Code Style Guidelines
+
+### General Principles
+- Fix all analyzer errors before committing/moving on
+- Warnings are acceptable but should be minimized
+- Always run `flutter analyze` after making changes
+
+### Imports
+```dart
+// Order: dart: packages, pub packages, local imports
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../models/workout_plan.dart';
+import '../services/hive_service.dart';
+```
+- Use relative imports for local files
+- Group imports by type with blank lines between groups
+
+### Naming Conventions
+- **Files**: snake_case (e.g., `workout_plan.dart`, `workout_screen.dart`)
+- **Classes**: PascalCase (e.g., `WorkoutPlan`, `WorkoutScreen`)
+- **Methods/Variables**: camelCase (e.g., `loadPlans()`, `_plans`)
+- **Constants**: camelCase with k prefix (e.g., `kDefaultReps`)
+- **Private members**: prefix with underscore (e.g., `_plans`)
+
+### Types
+- Use explicit types for class fields and return types
+- Use `final` by default, `var` only when mutation needed
+- Use `double` for weights, `int` for reps/sets
+
+### Widgets
+- Use `const` constructors where possible
+- Extract widgets into separate files in `lib/widgets/workout/` subdirectory
+- Use terminal-style UI with JetBrains Mono font (`GoogleFonts.jetBrainsMono()`)
+
+### Theme & Colors
+- Use theme-aware color functions from `app_theme.dart`:
+  - `backgroundColor(context)` - main background
+  - `surfaceColor(context)` - card/surface background
+  - `borderColor(context)` - borders
+  - `textPrimaryColor(context)` - main text
+  - `textSecondaryColor(context)` - secondary text
+  - `accentColor(context)` - accent color from settings
+- Never hardcode colors like `Colors.white` or `Colors.black` for UI
+- Use `accent.withAlpha(value)` for splash/highlight effects
+
+### Error Handling
+- Use try-catch for async operations
+- Show user-friendly SnackBar messages for errors
+- Log errors appropriately
+
+---
+
+## Key Files & Structure
+
+```
+lib/
+├── main.dart                    # App entry point
+├── models/                      # Hive models (set.dart, exercise.dart, etc.)
+│   └── *.g.dart               # Generated adapters (do not edit)
+├── providers/                  # State management (ChangeNotifier)
+├── services/                   # Business logic (HiveService, PRTrackingService)
+├── screens/                    # UI screens
+├── widgets/                    # Reusable widgets
+│   └── workout/               # Workout screen sub-widgets
+├── theme/                      # Theme configuration
+├── data/                       # Static data (exercise_library.dart)
+└── utils/                      # Utilities (fade_page_route.dart)
+```
+
+---
+
+## Provider Pattern
+
+Providers extend `ChangeNotifier` and use `notifyListeners()`:
+```dart
+class MyProvider with ChangeNotifier {
+  List<MyModel> _items = [];
+
+  List<MyModel> get items => _items;
+
+  void loadItems() {
+    _items = HiveService.getItems();
+    notifyListeners();
+  }
+}
+```
+
+Access in widgets:
+```dart
+final provider = context.watch<MyProvider>();
+final items = context.read<MyProvider>().items;
+```
+
+---
+
+## Hive Models
+
+Models use annotations and generate adapters:
+```dart
+@HiveType(typeId: 0)
+class MyModel extends HiveObject {
+  @HiveField(0)
+  final String field;
+
+  MyModel({required this.field});
+}
+```
+
+**Important**: After modifying models, regenerate adapters and analyze.
+
+---
+
+## Workflow Rules
+
+1. Read `opencode.md` at session start
+2. Run `flutter analyze` after every file change
+3. Fix all errors before proceeding
+4. Work one task at a time, verify compile before continuing
+5. Full restart required after Hive model changes (not just hot reload)
+6. Commit changes after task completion
+
+---
+
+## Common Issues
+
+- **Gesture conflicts**: Use angle-based disambiguation for horizontal vs vertical swipe
+- **Week tab scroll**: Use `ScrollController` with `addPostFrameCallback` for initial position
+- **Model changes**: Always run `build_runner` then `flutter analyze`
