@@ -6,6 +6,7 @@ import 'providers/workout_session_provider.dart';
 import 'providers/progression_provider.dart';
 import 'providers/settings_provider.dart';
 import 'services/hive_service.dart';
+import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -111,8 +112,9 @@ class _MyAppState extends State<MyApp> {
             theme: buildTheme(accentLight, Brightness.light),
             darkTheme: buildTheme(accentDark, Brightness.dark),
             themeMode: settings.themeMode,
-            initialRoute: '/login',
+            initialRoute: '/splash',
             routes: {
+              '/splash': (context) => const SplashScreen(),
               '/login': (context) => const LoginScreen(),
               '/register': (context) => const RegisterScreen(),
               '/home': (context) => const HomeScreen(),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/workout_plan_provider.dart';
 import '../providers/workout_session_provider.dart';
+import '../services/auth_service.dart';
 import '../services/sample_data_seeder.dart';
 import '../theme/app_theme.dart';
 
@@ -103,6 +104,20 @@ class SettingsScreen extends StatelessWidget {
                 title: 'CLEAR ALL DATA',
                 subtitle: 'Delete all plans and workout history',
                 onTap: () => _confirmClearData(context),
+                isDestructive: true,
+                accent: accent,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                error: error,
+                border: border,
+              ),
+              Divider(color: border),
+              _SectionHeader(title: 'ACCOUNT', accent: accent, border: border),
+              _buildSettingsTile(
+                icon: Icons.logout,
+                title: 'LOGOUT',
+                subtitle: 'Sign out of your account',
+                onTap: () => _confirmLogout(context),
                 isDestructive: true,
                 accent: accent,
                 textPrimary: textPrimary,
@@ -684,6 +699,71 @@ class SettingsScreen extends StatelessWidget {
                 accent: accent,
                 textPrimary: textPrimary,
                 textSecondary: textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmLogout(BuildContext context) {
+    final surface = surfaceColor(context);
+    final border = borderColor(context);
+    final textSecondary = textSecondaryColor(context);
+    final error = errorColor(context);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: border, width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '> LOGOUT?',
+                style: GoogleFonts.jetBrainsMono(
+                    fontSize: 16, fontWeight: FontWeight.bold, color: error),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'You will need to sign in again to access your data.',
+                style: GoogleFonts.jetBrainsMono(
+                    fontSize: 12, color: textSecondary),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text('[CANCEL]',
+                        style: GoogleFonts.jetBrainsMono(color: textSecondary)),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () async {
+                      await AuthService().logout();
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (context.mounted) {
+                        Navigator.pushNamedAndRemoveUntil(
+                            context, '/login', (route) => false);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: error,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: Text('[LOGOUT]', style: GoogleFonts.jetBrainsMono()),
+                  ),
+                ],
               ),
             ],
           ),
