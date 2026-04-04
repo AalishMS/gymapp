@@ -103,9 +103,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   Future<void> _onWeekChanged(int newIndex) async {
     await _autoSave();
-    setState(() {
-      _currentWeekIndex = newIndex;
-    });
+    if (mounted) {
+      setState(() {
+        _currentWeekIndex = newIndex;
+      });
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadSessionForCurrentWeek();
     });
@@ -114,15 +116,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   Future<void> _addNewWeek() async {
     await _autoSave();
     final lastWeek = _weeks.last;
-    setState(() {
-      _weeks.add(lastWeek + 1);
-      _currentWeekIndex = _weeks.length - 1;
-    });
+    if (mounted) {
+      setState(() {
+        _weeks.add(lastWeek + 1);
+        _currentWeekIndex = _weeks.length - 1;
+      });
+    }
   }
 
   Future<void> _autoSave() async {
     if (_isSaving) return;
-    setState(() => _isSaving = true);
+    if (mounted) {
+      setState(() => _isSaving = true);
+    }
 
     final session = _getOrCreateSession();
     final hasSets = session.exercises.any((e) => e.sets.isNotEmpty);
@@ -142,7 +148,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       }
     }
 
-    setState(() => _isSaving = false);
+    if (mounted) {
+      setState(() => _isSaving = false);
+    }
   }
 
   void _showPRDialog(List<PRResult> prs) {
@@ -206,7 +214,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   void _updateSession(WorkoutSession session) {
     _weekSessions[_currentWeek] = session;
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _addEmptyExercise() {
@@ -452,9 +462,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           );
           return;
         }
-        setState(() {
-          _weeks[index] = newWeek;
-        });
+        if (mounted) {
+          setState(() {
+            _weeks[index] = newWeek;
+          });
+        }
         try {
           final sessionProvider = context.read<WorkoutSessionProvider>();
           await sessionProvider.renameSessionWeek(
@@ -766,9 +778,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     child: Center(
                       child: InkWell(
                         onTap: () {
-                          setState(() {
-                            _currentWeekIndex = index;
-                          });
+                          if (mounted) {
+                            setState(() {
+                              _currentWeekIndex = index;
+                            });
+                          }
                         },
                         onLongPress: () =>
                             _showWeekOptionsMenu(context, index, week),
