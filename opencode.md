@@ -10,6 +10,7 @@ DONE
 
 ## Recent Changes
 
+- **2E Offline detection**: Added connectivity_plus dependency. Created ConnectivityService with isOnline() and onConnectivityChanged stream. HomeScreen now displays a banner when offline with terminal aesthetic.
 - **2D Repository swap**: Repositories now call API instead of Hive. WorkoutPlanRepository and WorkoutSessionRepository use ApiService for HTTP calls. App works online only. StatsRepository still uses HiveService (intentional for this phase).
 
 

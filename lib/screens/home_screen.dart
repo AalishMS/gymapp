@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +7,7 @@ import '../providers/settings_provider.dart';
 import '../models/workout_plan.dart';
 import '../models/exercise_template.dart';
 import '../theme/app_theme.dart';
+import '../services/connectivity_service.dart';
 import 'create_plan_screen.dart';
 import 'edit_plan_screen.dart';
 import 'workout_screen.dart';
@@ -14,8 +16,43 @@ import 'settings_screen.dart';
 import 'stats_screen.dart';
 import '../services/sample_data_seeder.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final ConnectivityService _connectivityService = ConnectivityService();
+  late StreamSubscription<bool> _connectivitySubscription;
+  bool _isOnline = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _connectivityService.startListening();
+    _connectivitySubscription =
+        _connectivityService.onConnectivityChanged.listen((isOnline) {
+      if (mounted) {
+        setState(() => _isOnline = isOnline);
+      }
+    });
+    _checkInitialConnectivity();
+  }
+
+  Future<void> _checkInitialConnectivity() async {
+    final online = await _connectivityService.isOnline();
+    if (mounted) {
+      setState(() => _isOnline = online);
+    }
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +60,7 @@ class HomeScreen extends StatelessWidget {
     final accent = settings.accentColor;
     final bg = backgroundColor(context);
     final border = borderColor(context);
+    final error = errorColor(context);
 
     return Scaffold(
       backgroundColor: bg,
@@ -30,6 +68,7 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (!_isOnline) _buildOfflineBanner(error, border),
             _buildHeader(context, accent, border),
             Expanded(
               child: Consumer<WorkoutPlanProvider>(
@@ -45,6 +84,25 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: _buildFab(context, accent),
+    );
+  }
+
+  Widget _buildOfflineBanner(Color error, Color border) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      decoration: BoxDecoration(
+        color: error.withAlpha(26),
+        border: Border(bottom: BorderSide(color: error, width: 1)),
+      ),
+      child: Text(
+        '> OFFLINE MODE',
+        style: GoogleFonts.jetBrainsMono(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: error,
+        ),
+      ),
     );
   }
 
