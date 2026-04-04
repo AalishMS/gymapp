@@ -6,10 +6,17 @@ DONE
 ✅ JWT auth (register/login)
 ✅ Database schema in Supabase
 ✅ Plans and sessions endpoints verified in Swagger
+✅ **Phase 2A**: Token storage + HTTP client (ApiService, AuthService)
+✅ **Phase 2B**: Login and register screens
+✅ **Phase 2C**: Session persistence (JWT token persistence across app restarts)
+✅ **Phase 2D**: Repository swap (API instead of Hive)
+✅ **Phase 2E**: Offline detection (connectivity status and UI indicator)
+✅ **Phase 2F**: Hive as read cache (cached data when offline)
 
 
 ## Recent Changes
 
+- **2C Session persistence**: Fixed JWT token persistence across app restarts. Enhanced FlutterSecureStorage with Android encryptedSharedPreferences for reliable token storage. Fixed app routing to use /splash as initialRoute to ensure proper authentication flow. Added token validation after cache priming to handle edge cases. Users now stay logged in across app kills and device reboots.
 - **2F Hive as read cache**: Added CacheService with JSON serialization using Hive boxes ('plans_cache', 'sessions_cache'). Added toJson/fromJson methods to all models (WorkoutPlan, WorkoutSession, Exercise, ExerciseTemplate, Set). Repositories now check connectivity: if online, fetch from API and save to cache; if offline, return cached data. Write operations (add/update/delete) throw 'Cannot modify offline' exception when offline. Providers catch exceptions and expose error state. SplashScreen primes cache on login by calling getPlans() and getSessionsAsync(). App displays cached data when offline (read-only).
 - **2E Offline detection**: Added connectivity_plus dependency. Created ConnectivityService with isOnline() and onConnectivityChanged stream. HomeScreen now displays a banner when offline with terminal aesthetic.
 - **2D Repository swap**: Repositories now call API instead of Hive. WorkoutPlanRepository and WorkoutSessionRepository use ApiService for HTTP calls. App works online only. StatsRepository still uses HiveService (intentional for this phase).
@@ -28,7 +35,7 @@ Build login and register UI screens in Flutter
 On first launch redirect to login screen
 On successful login redirect to home screen
 
-2C: Session persistence
+2C: Session persistence ✅
 
 If valid token exists on device, skip login screen automatically
 Handle token expiry — redirect to login
