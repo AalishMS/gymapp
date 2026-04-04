@@ -36,8 +36,16 @@ class _SplashScreenState extends State<SplashScreen> {
         // Ignore errors during cache priming, proceed to home anyway
       }
 
+      // Check if we're still logged in after cache priming
+      final stillLoggedIn = await authService.isLoggedIn();
+
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home');
+
+      if (stillLoggedIn) {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
     } else {
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/login');

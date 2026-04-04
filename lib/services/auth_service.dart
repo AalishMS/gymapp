@@ -3,10 +3,14 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 class AuthService {
-  static const String baseUrl = 'http://192.168.101.23:8000';
+  static const String baseUrl = 'http://10.0.2.2:8000';
   static const String tokenKey = 'auth_token';
 
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
+  );
 
   Future<bool> register(String email, String password) async {
     try {
@@ -47,11 +51,13 @@ class AuthService {
   }
 
   Future<String?> getToken() async {
-    return await _storage.read(key: tokenKey);
+    final token = await _storage.read(key: tokenKey);
+    return token;
   }
 
   Future<bool> isLoggedIn() async {
     final token = await getToken();
-    return token != null && token.isNotEmpty;
+    final loggedIn = token != null && token.isNotEmpty;
+    return loggedIn;
   }
 }

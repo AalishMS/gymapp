@@ -112,6 +112,7 @@ class _MyAppState extends State<MyApp> {
             theme: buildTheme(accentLight, Brightness.light),
             darkTheme: buildTheme(accentDark, Brightness.dark),
             themeMode: settingsProvider.themeMode,
+            initialRoute: '/splash',
             onGenerateRoute: (routeSettings) {
               switch (routeSettings.name) {
                 case '/splash':
