@@ -8,12 +8,12 @@ class AuthService {
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  Future<bool> register(String username, String password) async {
+  Future<bool> register(String email, String password) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'password': password}),
+        body: jsonEncode({'email': email, 'password': password}),
       );
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
@@ -21,12 +21,12 @@ class AuthService {
     }
   }
 
-  Future<bool> login(String username, String password) async {
+  Future<bool> login(String email, String password) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'password': password}),
+        body: jsonEncode({'email': email, 'password': password}),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
