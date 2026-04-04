@@ -75,7 +75,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       } else {
         setState(() {
-          _errorMessage = 'Registration failed';
+          _errorMessage = 'Registration failed. Try a different email.';
         });
       }
     }
