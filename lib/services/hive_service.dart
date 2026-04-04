@@ -22,6 +22,10 @@ class HiveService {
     // Open boxes
     await Hive.openBox<WorkoutPlan>(plansBox);
     await Hive.openBox<WorkoutSession>(sessionsBox);
+
+    // Open cache boxes
+    await Hive.openBox('plans_cache');
+    await Hive.openBox('sessions_cache');
   }
 
   // Workout Plan operations

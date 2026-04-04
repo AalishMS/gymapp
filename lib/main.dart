@@ -6,7 +6,6 @@ import 'providers/workout_session_provider.dart';
 import 'providers/progression_provider.dart';
 import 'providers/settings_provider.dart';
 import 'services/hive_service.dart';
-import 'services/cache_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
@@ -18,7 +17,6 @@ void main() async {
 
   try {
     await HiveService.init();
-    await CacheService.init();
   } catch (e) {
     debugPrint('Service init error: $e');
   }

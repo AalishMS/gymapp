@@ -7,11 +7,6 @@ class CacheService {
   static const String _plansCacheBox = 'plans_cache';
   static const String _sessionsCacheBox = 'sessions_cache';
 
-  static Future<void> init() async {
-    await Hive.openBox(_plansCacheBox);
-    await Hive.openBox(_sessionsCacheBox);
-  }
-
   // WorkoutPlan cache operations
   Future<void> savePlans(List<WorkoutPlan> plans) async {
     final box = Hive.box(_plansCacheBox);
