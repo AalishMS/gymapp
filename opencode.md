@@ -10,7 +10,7 @@ DONE
 
 ## Recent Changes
 
-- **Session persistence (2C)**: Added SplashScreen with auth check on app launch, redirects to /home if token exists else /login. Added 401 handling in ApiService to clear token on unauthorized responses. Added logout button in SettingsScreen.
+- **2D Repository swap**: Repositories now call API instead of Hive. WorkoutPlanRepository and WorkoutSessionRepository use ApiService for HTTP calls. App works online only. StatsRepository still uses HiveService (intentional for this phase).
 
 
 PHASE 2 — Flutter ↔ API Integration
@@ -31,7 +31,7 @@ On successful login redirect to home screen
 If valid token exists on device, skip login screen automatically
 Handle token expiry — redirect to login
 
-2D: Repository swap
+2D: Repository swap ✅
 
 Rewrite WorkoutPlanRepository to call API instead of Hive
 Rewrite WorkoutSessionRepository to call API instead of Hive

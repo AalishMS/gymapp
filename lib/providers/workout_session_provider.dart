@@ -17,8 +17,8 @@ class WorkoutSessionProvider with ChangeNotifier {
     loadSessions();
   }
 
-  void loadSessions() {
-    _sessions = _repository.getSessions();
+  void loadSessions() async {
+    _sessions = await _repository.getSessionsAsync();
     notifyListeners();
   }
 

@@ -17,19 +17,25 @@ class ExerciseTemplateAdapter extends TypeAdapter<ExerciseTemplate> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return ExerciseTemplate(
-      name: fields[0] as String,
-      sets: fields[1] as int,
+      id: fields[0] as String?,
+      name: fields[1] as String,
+      sets: fields[2] as int,
+      orderIndex: fields[3] as int? ?? 0,
     );
   }
 
   @override
   void write(BinaryWriter writer, ExerciseTemplate obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(4)
       ..writeByte(0)
-      ..write(obj.name)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.sets);
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.sets)
+      ..writeByte(3)
+      ..write(obj.orderIndex);
   }
 
   @override

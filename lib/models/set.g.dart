@@ -17,24 +17,27 @@ class SetAdapter extends TypeAdapter<Set> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Set(
-      reps: fields[0] as int,
-      weight: fields[1] as double,
-      rpe: fields[2] as int?,
-      note: fields[3] as String?,
+      id: fields[0] as String?,
+      reps: fields[1] as int,
+      weight: fields[2] as double,
+      rpe: fields[3] as int?,
+      note: fields[4] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Set obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
-      ..write(obj.reps)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.weight)
+      ..write(obj.reps)
       ..writeByte(2)
-      ..write(obj.rpe)
+      ..write(obj.weight)
       ..writeByte(3)
+      ..write(obj.rpe)
+      ..writeByte(4)
       ..write(obj.note);
   }
 

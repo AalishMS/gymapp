@@ -40,7 +40,7 @@ class _StatsScreenState extends State<StatsScreen> {
     final accent = context.watch<SettingsProvider>().accentColor;
     final frequency = _statsRepo.getWorkoutFrequency(8);
     final totalWorkouts = _sessionRepo.getSessions().length;
-    final workoutsThisWeek = _statsRepo.getWorkoutsThisWeek();
+    final workoutsThisWeek = _sessionRepo.workoutsThisWeek;
     final prs = _statsRepo.getAllExercisePRs();
     final totalPRs = prs.length;
 

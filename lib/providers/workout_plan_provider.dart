@@ -12,8 +12,8 @@ class WorkoutPlanProvider with ChangeNotifier {
     loadPlans();
   }
 
-  void loadPlans() {
-    _plans = _repository.getPlans();
+  void loadPlans() async {
+    _plans = await _repository.getPlans();
     notifyListeners();
   }
 

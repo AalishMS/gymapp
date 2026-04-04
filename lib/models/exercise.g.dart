@@ -17,22 +17,28 @@ class ExerciseAdapter extends TypeAdapter<Exercise> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Exercise(
-      name: fields[0] as String,
-      sets: (fields[1] as List).cast<Set>(),
-      note: fields[2] as String?,
+      id: fields[0] as String?,
+      name: fields[1] as String,
+      sets: (fields[2] as List).cast<Set>(),
+      note: fields[3] as String?,
+      orderIndex: fields[4] as int? ?? 0,
     );
   }
 
   @override
   void write(BinaryWriter writer, Exercise obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(5)
       ..writeByte(0)
-      ..write(obj.name)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.sets)
+      ..write(obj.name)
       ..writeByte(2)
-      ..write(obj.note);
+      ..write(obj.sets)
+      ..writeByte(3)
+      ..write(obj.note)
+      ..writeByte(4)
+      ..write(obj.orderIndex);
   }
 
   @override

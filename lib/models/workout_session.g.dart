@@ -17,24 +17,27 @@ class WorkoutSessionAdapter extends TypeAdapter<WorkoutSession> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return WorkoutSession(
-      date: fields[0] as DateTime,
-      planName: fields[1] as String,
-      exercises: (fields[2] as List).cast<Exercise>(),
-      weekNumber: fields[3] as int,
+      id: fields[0] as String?,
+      date: fields[1] as DateTime,
+      planName: fields[2] as String,
+      exercises: (fields[3] as List).cast<Exercise>(),
+      weekNumber: fields[4] as int? ?? 1,
     );
   }
 
   @override
   void write(BinaryWriter writer, WorkoutSession obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
-      ..write(obj.date)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.planName)
+      ..write(obj.date)
       ..writeByte(2)
-      ..write(obj.exercises)
+      ..write(obj.planName)
       ..writeByte(3)
+      ..write(obj.exercises)
+      ..writeByte(4)
       ..write(obj.weekNumber);
   }
 

@@ -6,18 +6,22 @@ part 'workout_session.g.dart';
 @HiveType(typeId: 4)
 class WorkoutSession extends HiveObject {
   @HiveField(0)
-  final DateTime date;
+  final String? id;
 
   @HiveField(1)
-  final String planName;
+  final DateTime date;
 
   @HiveField(2)
-  final List<Exercise> exercises;
+  final String planName;
 
   @HiveField(3)
+  final List<Exercise> exercises;
+
+  @HiveField(4)
   final int weekNumber;
 
   WorkoutSession({
+    this.id,
     required this.date,
     required this.planName,
     required this.exercises,
