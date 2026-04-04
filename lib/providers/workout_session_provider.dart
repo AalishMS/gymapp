@@ -8,18 +8,26 @@ class WorkoutSessionProvider with ChangeNotifier {
   List<WorkoutSession> _sessions = [];
   WorkoutSession? _currentSession;
   int _currentWeek = 1;
+  String? _error;
 
   List<WorkoutSession> get sessions => _sessions;
   WorkoutSession? get currentSession => _currentSession;
   int get currentWeek => _currentWeek;
+  String? get error => _error;
 
   WorkoutSessionProvider() {
     loadSessions();
   }
 
   void loadSessions() async {
-    _sessions = await _repository.getSessionsAsync();
-    notifyListeners();
+    try {
+      _error = null;
+      _sessions = await _repository.getSessionsAsync();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
   }
 
   void startWorkout(String planName, List<Exercise> exercises,
@@ -45,21 +53,42 @@ class WorkoutSessionProvider with ChangeNotifier {
   }
 
   Future<void> saveWorkout() async {
-    if (_currentSession != null) {
-      await _repository.addSession(_currentSession!);
-      _currentSession = null;
-      loadSessions();
+    try {
+      _error = null;
+      if (_currentSession != null) {
+        await _repository.addSession(_currentSession!);
+        _currentSession = null;
+        loadSessions();
+      }
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
     }
   }
 
   Future<void> deleteSession(int index) async {
-    await _repository.deleteSession(index);
-    loadSessions();
+    try {
+      _error = null;
+      await _repository.deleteSession(index);
+      loadSessions();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> updateSession(int index, WorkoutSession session) async {
-    await _repository.updateSession(index, session);
-    loadSessions();
+    try {
+      _error = null;
+      await _repository.updateSession(index, session);
+      loadSessions();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
   }
 
   List<int> getWeeksForPlan(String planName) {

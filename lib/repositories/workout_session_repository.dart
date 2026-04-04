@@ -3,9 +3,13 @@ import '../models/workout_session.dart';
 import '../models/exercise.dart';
 import '../models/set.dart';
 import '../services/api_service.dart';
+import '../services/connectivity_service.dart';
+import '../services/cache_service.dart';
 
 class WorkoutSessionRepository {
   final ApiService _apiService = ApiService();
+  final ConnectivityService _connectivityService = ConnectivityService();
+  final CacheService _cacheService = CacheService();
   List<WorkoutSession> _cachedSessions = [];
 
   List<WorkoutSession> get cachedSessions => _cachedSessions;
@@ -15,18 +19,37 @@ class WorkoutSessionRepository {
   }
 
   Future<List<WorkoutSession>> getSessionsAsync() async {
-    final response = await _apiService.get('/sessions');
-    if (response.statusCode != 200) {
-      throw Exception(
-          'Failed to load sessions: ${response.statusCode} ${response.body}');
+    final isOnline = await _connectivityService.isOnline();
+
+    if (isOnline) {
+      final response = await _apiService.get('/sessions');
+      if (response.statusCode != 200) {
+        throw Exception(
+            'Failed to load sessions: ${response.statusCode} ${response.body}');
+      }
+      final List<dynamic> data = jsonDecode(response.body);
+      _cachedSessions = data.map((json) => _sessionFromJson(json)).toList();
+      _cachedSessions.sort((a, b) => b.date.compareTo(a.date));
+
+      // Save to cache
+      await _cacheService.saveSessions(_cachedSessions);
+
+      return _cachedSessions;
+    } else {
+      // Return cached sessions when offline
+      final cached = await _cacheService.getSessions();
+      cached.sort((a, b) => b.date.compareTo(a.date));
+      return cached;
     }
-    final List<dynamic> data = jsonDecode(response.body);
-    _cachedSessions = data.map((json) => _sessionFromJson(json)).toList();
-    _cachedSessions.sort((a, b) => b.date.compareTo(a.date));
-    return _cachedSessions;
   }
 
   Future<void> addSession(WorkoutSession session) async {
+    final isOnline = await _connectivityService.isOnline();
+
+    if (!isOnline) {
+      throw Exception('Cannot modify sessions offline');
+    }
+
     final body = {
       'plan_name': session.planName,
       'date': session.date.toIso8601String(),
@@ -52,9 +75,18 @@ class WorkoutSessionRepository {
       throw Exception(
           'Failed to add session: ${response.statusCode} ${response.body}');
     }
+
+    // Refresh cache
+    await getSessionsAsync();
   }
 
   Future<void> deleteSession(int index) async {
+    final isOnline = await _connectivityService.isOnline();
+
+    if (!isOnline) {
+      throw Exception('Cannot modify sessions offline');
+    }
+
     if (index < 0 || index >= _cachedSessions.length) {
       throw Exception('Invalid index');
     }
@@ -67,9 +99,18 @@ class WorkoutSessionRepository {
       throw Exception(
           'Failed to delete session: ${response.statusCode} ${response.body}');
     }
+
+    // Refresh cache
+    await getSessionsAsync();
   }
 
   Future<void> updateSession(int index, WorkoutSession session) async {
+    final isOnline = await _connectivityService.isOnline();
+
+    if (!isOnline) {
+      throw Exception('Cannot modify sessions offline');
+    }
+
     if (session.id == null) {
       throw Exception('Session ID is required for update');
     }
@@ -98,6 +139,9 @@ class WorkoutSessionRepository {
       throw Exception(
           'Failed to update session: ${response.statusCode} ${response.body}');
     }
+
+    // Refresh cache
+    await getSessionsAsync();
   }
 
   List<WorkoutSession> getSessionsForPlan(String planName) {

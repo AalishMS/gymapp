@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../repositories/workout_plan_repository.dart';
+import '../repositories/workout_session_repository.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,8 +25,21 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (isLoggedIn) {
+      // Prime the cache by loading data from API
+      try {
+        final planRepo = WorkoutPlanRepository();
+        final sessionRepo = WorkoutSessionRepository();
+
+        await planRepo.getPlans();
+        await sessionRepo.getSessionsAsync();
+      } catch (e) {
+        // Ignore errors during cache priming, proceed to home anyway
+      }
+
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home');
     } else {
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/login');
     }
   }

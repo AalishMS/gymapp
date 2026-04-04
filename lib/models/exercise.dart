@@ -41,4 +41,23 @@ class Exercise extends HiveObject {
       orderIndex: orderIndex ?? this.orderIndex,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'sets': sets.map((s) => s.toJson()).toList(),
+        'note': note,
+        'order_index': orderIndex,
+      };
+
+  factory Exercise.fromJson(Map<String, dynamic> json) => Exercise(
+        id: json['id'] as String?,
+        name: json['name'] as String,
+        sets: (json['sets'] as List<dynamic>?)
+                ?.map((s) => Set.fromJson(s as Map<String, dynamic>))
+                .toList() ??
+            [],
+        note: json['note'] as String?,
+        orderIndex: json['order_index'] as int? ?? 0,
+      );
 }

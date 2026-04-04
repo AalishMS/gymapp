@@ -31,4 +31,20 @@ class Set extends HiveObject {
       note: note ?? this.note,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'reps': reps,
+        'weight': weight,
+        'rpe': rpe,
+        'note': note,
+      };
+
+  factory Set.fromJson(Map<String, dynamic> json) => Set(
+        id: json['id'] as String?,
+        reps: json['reps'] as int,
+        weight: (json['weight'] as num).toDouble(),
+        rpe: json['rpe'] as int?,
+        note: json['note'] as String?,
+      );
 }
