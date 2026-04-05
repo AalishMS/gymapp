@@ -20,7 +20,7 @@ class ExerciseTemplateAdapter extends TypeAdapter<ExerciseTemplate> {
       id: fields[0] as String?,
       name: fields[1] as String,
       sets: fields[2] as int,
-      orderIndex: fields[3] as int? ?? 0,
+      orderIndex: fields[3] as int,
     );
   }
 

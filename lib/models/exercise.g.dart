@@ -21,7 +21,7 @@ class ExerciseAdapter extends TypeAdapter<Exercise> {
       name: fields[1] as String,
       sets: (fields[2] as List).cast<Set>(),
       note: fields[3] as String?,
-      orderIndex: fields[4] as int? ?? 0,
+      orderIndex: fields[4] as int,
     );
   }
 

@@ -15,6 +15,7 @@ class WorkoutSessionProvider with ChangeNotifier {
   WorkoutSession? get currentSession => _currentSession;
   int get currentWeek => _currentWeek;
   String? get error => _error;
+  WorkoutSessionRepository get repository => _repository;
 
   WorkoutSessionProvider() {
     loadSessions();

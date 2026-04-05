@@ -4,11 +4,14 @@ import '../models/exercise_template.dart';
 import '../services/api_service.dart';
 import '../services/connectivity_service.dart';
 import '../services/cache_service.dart';
+import '../services/sync_queue_service.dart';
+import '../services/hive_service.dart';
 
 class WorkoutPlanRepository {
   final ApiService _apiService = ApiService();
   final ConnectivityService _connectivityService = ConnectivityService();
   final CacheService _cacheService = CacheService();
+  final SyncQueueService _syncQueueService = SyncQueueService.instance;
   List<WorkoutPlan> _cachedPlans = [];
 
   Future<List<WorkoutPlan>> getPlans() async {
@@ -37,7 +40,14 @@ class WorkoutPlanRepository {
     final isOnline = await _connectivityService.isOnline();
 
     if (!isOnline) {
-      throw Exception('Cannot modify plans offline');
+      // Queue the operation for later sync
+      await _syncQueueService.addPlanCreate(plan);
+
+      // Update local cache immediately for seamless UX
+      await HiveService.addPlan(plan);
+      _cachedPlans.add(plan);
+      await _cacheService.savePlans(_cachedPlans);
+      return;
     }
 
     final body = {
@@ -64,7 +74,16 @@ class WorkoutPlanRepository {
     final isOnline = await _connectivityService.isOnline();
 
     if (!isOnline) {
-      throw Exception('Cannot modify plans offline');
+      // Queue the operation for later sync
+      await _syncQueueService.addPlanUpdate(plan);
+
+      // Update local cache immediately for seamless UX
+      await HiveService.updatePlan(index, plan);
+      if (index < _cachedPlans.length) {
+        _cachedPlans[index] = plan;
+        await _cacheService.savePlans(_cachedPlans);
+      }
+      return;
     }
 
     if (plan.id == null) {
@@ -93,14 +112,24 @@ class WorkoutPlanRepository {
   Future<void> deletePlan(int index) async {
     final isOnline = await _connectivityService.isOnline();
 
-    if (!isOnline) {
-      throw Exception('Cannot modify plans offline');
-    }
-
     if (index < 0 || index >= _cachedPlans.length) {
       throw Exception('Invalid index');
     }
     final plan = _cachedPlans[index];
+
+    if (!isOnline) {
+      // Queue the operation for later sync (only if plan has an ID from server)
+      if (plan.id != null) {
+        await _syncQueueService.addPlanDelete(plan.id!);
+      }
+
+      // Update local cache immediately for seamless UX
+      await HiveService.deletePlan(index);
+      _cachedPlans.removeAt(index);
+      await _cacheService.savePlans(_cachedPlans);
+      return;
+    }
+
     if (plan.id == null) {
       throw Exception('Plan ID is required for delete');
     }

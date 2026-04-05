@@ -4,6 +4,7 @@ import '../models/workout_session.dart';
 import '../models/exercise_template.dart';
 import '../models/exercise.dart';
 import '../models/set.dart';
+import '../models/queued_operation.dart';
 
 class HiveService {
   static const String plansBox = 'workout_plans';
@@ -18,6 +19,7 @@ class HiveService {
     Hive.registerAdapter(ExerciseTemplateAdapter());
     Hive.registerAdapter(WorkoutPlanAdapter());
     Hive.registerAdapter(WorkoutSessionAdapter());
+    Hive.registerAdapter(QueuedOperationAdapter());
 
     // Open boxes
     await Hive.openBox<WorkoutPlan>(plansBox);
@@ -26,6 +28,9 @@ class HiveService {
     // Open cache boxes
     await Hive.openBox('plans_cache');
     await Hive.openBox('sessions_cache');
+
+    // Open sync queue box
+    await Hive.openBox('sync_queue');
   }
 
   // Workout Plan operations

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import '../services/sync_service.dart';
 
 class ConnectivityService {
   static final ConnectivityService _instance = ConnectivityService._internal();
@@ -9,6 +10,9 @@ class ConnectivityService {
   final Connectivity _connectivity = Connectivity();
   final StreamController<bool> _connectivityController =
       StreamController<bool>.broadcast();
+  final SyncService _syncService = SyncService.instance;
+
+  bool _wasOffline = false;
 
   Stream<bool> get onConnectivityChanged => _connectivityController.stream;
 
@@ -24,12 +28,31 @@ class ConnectivityService {
   }
 
   void _onConnectivityChanged(List<ConnectivityResult> results) {
-    _connectivityController.add(_isConnected(results));
+    final isNowOnline = _isConnected(results);
+    _connectivityController.add(isNowOnline);
+
+    // If we were offline and now we're online, trigger sync
+    if (_wasOffline && isNowOnline) {
+      _triggerSync();
+    }
+
+    _wasOffline = !isNowOnline;
+  }
+
+  void _triggerSync() async {
+    try {
+      await _syncService.processQueue();
+    } catch (e) {
+      print('Sync failed when connectivity restored: $e');
+    }
   }
 
   void startListening() {
     _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
-    isOnline().then((online) => _connectivityController.add(online));
+    isOnline().then((online) {
+      _connectivityController.add(online);
+      _wasOffline = !online;
+    });
   }
 
   void dispose() {

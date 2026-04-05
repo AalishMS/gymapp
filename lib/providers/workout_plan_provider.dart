@@ -9,6 +9,7 @@ class WorkoutPlanProvider with ChangeNotifier {
 
   List<WorkoutPlan> get plans => _plans;
   String? get error => _error;
+  WorkoutPlanRepository get repository => _repository;
 
   WorkoutPlanProvider() {
     loadPlans();

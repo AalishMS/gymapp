@@ -1,44 +1,47 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'workout_session.dart';
+part of 'queued_operation.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class WorkoutSessionAdapter extends TypeAdapter<WorkoutSession> {
+class QueuedOperationAdapter extends TypeAdapter<QueuedOperation> {
   @override
-  final int typeId = 4;
+  final int typeId = 5;
 
   @override
-  WorkoutSession read(BinaryReader reader) {
+  QueuedOperation read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return WorkoutSession(
-      id: fields[0] as String?,
-      date: fields[1] as DateTime,
-      planName: fields[2] as String,
-      exercises: (fields[3] as List).cast<Exercise>(),
-      weekNumber: fields[4] as int,
+    return QueuedOperation(
+      id: fields[0] as String,
+      action: fields[1] as String,
+      entity: fields[2] as String,
+      payload: (fields[3] as Map).cast<String, dynamic>(),
+      timestamp: fields[4] as DateTime,
+      retryCount: fields[5] as int,
     );
   }
 
   @override
-  void write(BinaryWriter writer, WorkoutSession obj) {
+  void write(BinaryWriter writer, QueuedOperation obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.date)
+      ..write(obj.action)
       ..writeByte(2)
-      ..write(obj.planName)
+      ..write(obj.entity)
       ..writeByte(3)
-      ..write(obj.exercises)
+      ..write(obj.payload)
       ..writeByte(4)
-      ..write(obj.weekNumber);
+      ..write(obj.timestamp)
+      ..writeByte(5)
+      ..write(obj.retryCount);
   }
 
   @override
@@ -47,7 +50,7 @@ class WorkoutSessionAdapter extends TypeAdapter<WorkoutSession> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is WorkoutSessionAdapter &&
+      other is QueuedOperationAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

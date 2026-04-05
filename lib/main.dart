@@ -6,6 +6,8 @@ import 'providers/workout_session_provider.dart';
 import 'providers/progression_provider.dart';
 import 'providers/settings_provider.dart';
 import 'services/hive_service.dart';
+import 'services/sync_queue_service.dart';
+import 'services/sync_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
@@ -17,6 +19,7 @@ void main() async {
 
   try {
     await HiveService.init();
+    await SyncQueueService.instance.init();
   } catch (e) {
     debugPrint('Service init error: $e');
   }
@@ -49,6 +52,12 @@ class _MyAppState extends State<MyApp> {
     _workoutSessionProvider = WorkoutSessionProvider();
     _progressionProvider = ProgressionProvider();
     _settingsProvider = SettingsProvider();
+
+    // Set up repository references in SyncService for post-sync refreshes
+    SyncService.instance.setRepositories(
+      _workoutPlanProvider.repository,
+      _workoutSessionProvider.repository,
+    );
 
     await Future.delayed(const Duration(milliseconds: 100));
 

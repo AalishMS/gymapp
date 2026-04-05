@@ -5,11 +5,14 @@ import '../models/set.dart';
 import '../services/api_service.dart';
 import '../services/connectivity_service.dart';
 import '../services/cache_service.dart';
+import '../services/sync_queue_service.dart';
+import '../services/hive_service.dart';
 
 class WorkoutSessionRepository {
   final ApiService _apiService = ApiService();
   final ConnectivityService _connectivityService = ConnectivityService();
   final CacheService _cacheService = CacheService();
+  final SyncQueueService _syncQueueService = SyncQueueService.instance;
   List<WorkoutSession> _cachedSessions = [];
 
   List<WorkoutSession> get cachedSessions => _cachedSessions;
@@ -47,7 +50,15 @@ class WorkoutSessionRepository {
     final isOnline = await _connectivityService.isOnline();
 
     if (!isOnline) {
-      throw Exception('Cannot modify sessions offline');
+      // Queue the operation for later sync
+      await _syncQueueService.addSessionCreate(session);
+
+      // Update local cache immediately for seamless UX
+      await HiveService.addSession(session);
+      _cachedSessions.add(session);
+      _cachedSessions.sort((a, b) => b.date.compareTo(a.date));
+      await _cacheService.saveSessions(_cachedSessions);
+      return;
     }
 
     final body = {
@@ -83,14 +94,24 @@ class WorkoutSessionRepository {
   Future<void> deleteSession(int index) async {
     final isOnline = await _connectivityService.isOnline();
 
-    if (!isOnline) {
-      throw Exception('Cannot modify sessions offline');
-    }
-
     if (index < 0 || index >= _cachedSessions.length) {
       throw Exception('Invalid index');
     }
     final session = _cachedSessions[index];
+
+    if (!isOnline) {
+      // Queue the operation for later sync (only if session has an ID from server)
+      if (session.id != null) {
+        await _syncQueueService.addSessionDelete(session.id!);
+      }
+
+      // Update local cache immediately for seamless UX
+      await HiveService.deleteSession(index);
+      _cachedSessions.removeAt(index);
+      await _cacheService.saveSessions(_cachedSessions);
+      return;
+    }
+
     if (session.id == null) {
       throw Exception('Session ID is required for delete');
     }
@@ -108,7 +129,17 @@ class WorkoutSessionRepository {
     final isOnline = await _connectivityService.isOnline();
 
     if (!isOnline) {
-      throw Exception('Cannot modify sessions offline');
+      // Queue the operation for later sync
+      await _syncQueueService.addSessionUpdate(session);
+
+      // Update local cache immediately for seamless UX
+      await HiveService.updateSession(index, session);
+      if (index < _cachedSessions.length) {
+        _cachedSessions[index] = session;
+        _cachedSessions.sort((a, b) => b.date.compareTo(a.date));
+        await _cacheService.saveSessions(_cachedSessions);
+      }
+      return;
     }
 
     if (session.id == null) {
@@ -194,16 +225,35 @@ class WorkoutSessionRepository {
       String planName, int oldWeek, int newWeek) async {
     final isOnline = await _connectivityService.isOnline();
 
-    if (!isOnline) {
-      throw Exception('Cannot modify sessions offline');
-    }
-
     // Find sessions to update
     final sessionsToUpdate = _cachedSessions
         .where((s) =>
             s.planName.toLowerCase() == planName.toLowerCase() &&
             s.weekNumber == oldWeek)
         .toList();
+
+    if (!isOnline) {
+      // Queue the operations for later sync
+      for (var session in sessionsToUpdate) {
+        if (session.id != null) {
+          final updatedSession = session.copyWith(weekNumber: newWeek);
+          await _syncQueueService.addSessionUpdate(updatedSession);
+        }
+      }
+
+      // Update local cache immediately for seamless UX
+      await HiveService.renameSessionWeek(planName, oldWeek, newWeek);
+      // Update the cached sessions
+      for (int i = 0; i < _cachedSessions.length; i++) {
+        if (_cachedSessions[i].planName.toLowerCase() ==
+                planName.toLowerCase() &&
+            _cachedSessions[i].weekNumber == oldWeek) {
+          _cachedSessions[i] = _cachedSessions[i].copyWith(weekNumber: newWeek);
+        }
+      }
+      await _cacheService.saveSessions(_cachedSessions);
+      return;
+    }
 
     // Update each session
     for (var session in sessionsToUpdate) {
@@ -244,16 +294,29 @@ class WorkoutSessionRepository {
       String planName, int weekNumber) async {
     final isOnline = await _connectivityService.isOnline();
 
-    if (!isOnline) {
-      throw Exception('Cannot modify sessions offline');
-    }
-
     // Find sessions to delete
     final sessionsToDelete = _cachedSessions
         .where((s) =>
             s.planName.toLowerCase() == planName.toLowerCase() &&
             s.weekNumber == weekNumber)
         .toList();
+
+    if (!isOnline) {
+      // Queue the operations for later sync (only if sessions have IDs from server)
+      for (var session in sessionsToDelete) {
+        if (session.id != null) {
+          await _syncQueueService.addSessionDelete(session.id!);
+        }
+      }
+
+      // Update local cache immediately for seamless UX
+      await HiveService.deleteSessionForPlanAndWeek(planName, weekNumber);
+      _cachedSessions.removeWhere((s) =>
+          s.planName.toLowerCase() == planName.toLowerCase() &&
+          s.weekNumber == weekNumber);
+      await _cacheService.saveSessions(_cachedSessions);
+      return;
+    }
 
     // Delete each session
     for (var session in sessionsToDelete) {
