@@ -32,6 +32,95 @@ class HistoryScreen extends StatelessWidget {
       ),
       body: Consumer<WorkoutSessionProvider>(
         builder: (context, provider, child) {
+          // Show loading state
+          if (provider.isLoading) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        valueColor: AlwaysStoppedAnimation<Color>(accent),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      '> LOADING SESSIONS...',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 14,
+                        color: textSecondaryColor(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // Show error state
+          if (provider.error != null) {
+            final error = errorColor(context);
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Error banner
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: error.withAlpha(26),
+                        border: Border.all(color: error, width: 1),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '> ERROR',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: error,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            provider.error ?? 'Unknown error occurred',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 12,
+                              color: error,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Retry button
+                    OutlinedButton(
+                      onPressed: () {
+                        provider.loadSessions();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: accent,
+                        side: BorderSide(color: accent, width: 1),
+                      ),
+                      child:
+                          Text('[ RETRY ]', style: GoogleFonts.jetBrainsMono()),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // Show empty state
           if (provider.sessions.isEmpty) {
             return Center(
               child: Column(
@@ -57,6 +146,7 @@ class HistoryScreen extends StatelessWidget {
             );
           }
 
+          // Show sessions list
           return ListView.builder(
             padding: const EdgeInsets.all(8),
             itemCount: provider.sessions.length,
@@ -174,7 +264,6 @@ class _SessionCardState extends State<_SessionCard> {
     final accent = context.watch<SettingsProvider>().accentColor;
     final border = borderColor(context);
     final textSecondary = textSecondaryColor(context);
-    final error = errorColor(context);
 
     int totalSets = 0;
     int totalVolume = 0;

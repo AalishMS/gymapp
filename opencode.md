@@ -1,103 +1,58 @@
-# OpenGym Full Development Roadmap
+# OpenGym Development Roadmap
 
-DONE
+## Current Status
 
-✅ FastAPI skeleton
-✅ JWT auth (register/login)
-✅ Database schema in Supabase
-✅ Plans and sessions endpoints verified in Swagger
-✅ **Phase 2A**: Token storage + HTTP client (ApiService, AuthService)
-✅ **Phase 2B**: Login and register screens
-✅ **Phase 2C**: Session persistence (JWT token persistence across app restarts)
-✅ **Phase 2D**: Repository swap (API instead of Hive)
-✅ **Phase 2E**: Offline detection (connectivity status and UI indicator)
-✅ **Phase 2F**: Hive as read cache (cached data when offline)
-✅ **Phase 2G**: Offline write queue (queued writes with auto-sync) - COMPLETE
+Completed:
 
+- [x] FastAPI skeleton
+- [x] JWT auth (register/login)
+- [x] Database schema in Supabase
+- [x] Plans and sessions endpoints verified in Swagger
+- [x] Phase 2A: Token storage and HTTP client (ApiService, AuthService)
+- [x] Phase 2B: Login and register screens
+- [x] Phase 2C: Session persistence (JWT token survives app restarts)
+- [x] Phase 2D: Repository swap (API instead of Hive)
+- [x] Phase 2E: Offline detection and UI indicator
+- [x] Phase 2F: Hive read cache
+- [x] Phase 2G: Offline write queue with auto-sync
+- [x] Phase 3B: Flutter app points to production API URL
+- [x] Phase 4A: Error handling and loading states
 
 ## Recent Changes
 
-- **Phase 3B - Production API URL**: Updated Flutter app to use production Render API URL (https://opengym-api-9ztx.onrender.com) instead of local development URL. Changed baseUrl in auth_service.dart. App now connects to live production backend deployed on Render. Flutter analyze passed with no errors.
-- **2G Offline write queue - COMPLETE**: Full offline write capability implemented. SyncQueueService with QueuedOperation Hive model (TypeId 5) queues all write operations when offline. Local cache updates immediately for seamless UX. Auto-sync triggers on connectivity restore, processing operations chronologically with conservative failure handling. Added visual sync indicators in HomeScreen showing pending operations count and sync progress. Fixed cache loading issue where users saw empty plans on fresh login when API unavailable - repositories now fall back to cached data on API failures. Complete offline functionality: users can create/update/delete plans and sessions offline, see changes immediately, and sync automatically when online.
-- **2C Session persistence**: Fixed JWT token persistence across app restarts. Enhanced FlutterSecureStorage with Android encryptedSharedPreferences for reliable token storage. Fixed app routing to use /splash as initialRoute to ensure proper authentication flow. Added token validation after cache priming to handle edge cases. Users now stay logged in across app kills and device reboots.
-- **2F Hive as read cache**: Added CacheService with JSON serialization using Hive boxes ('plans_cache', 'sessions_cache'). Added toJson/fromJson methods to all models (WorkoutPlan, WorkoutSession, Exercise, ExerciseTemplate, Set). Repositories now check connectivity: if online, fetch from API and save to cache; if offline, return cached data. Write operations (add/update/delete) throw 'Cannot modify offline' exception when offline. Providers catch exceptions and expose error state. SplashScreen primes cache on login by calling getPlans() and getSessionsAsync(). App displays cached data when offline (read-only).
-- **2E Offline detection**: Added connectivity_plus dependency. Created ConnectivityService with isOnline() and onConnectivityChanged stream. HomeScreen now displays a banner when offline with terminal aesthetic.
-- **2D Repository swap**: Repositories now call API instead of Hive. WorkoutPlanRepository and WorkoutSessionRepository use ApiService for HTTP calls. App works online only. StatsRepository still uses HiveService (intentional for this phase).
+- **Phase 4A completed**: Comprehensive error handling and loading states implemented throughout the app:
+  - Added `isLoading` boolean fields to WorkoutPlanProvider and WorkoutSessionProvider with proper state management
+  - Enhanced ApiService with structured error handling for network errors (timeout, no connection), 401/403 (session expired), 500+ (server errors)
+  - Added user-friendly error messages and persistent error banners in HomeScreen, WorkoutScreen, and HistoryScreen
+  - Implemented inline loading indicators that don't block user interaction
+  - Added retry buttons that refresh entire screen data
+  - Error messages persist until user retries or dismisses, maintaining offline-first UX with cached data
+  - 401/403 responses automatically call AuthService.logout() and show "Session expired" message
 
+- Production API URL updated in Flutter to Render (`https://opengym-api-9ztx.onrender.com`) instead of local development URL.
+- Full offline write flow completed: queued operations persist locally, apply immediately to cache for UX, and sync in chronological order when connectivity returns.
+- Cache fallback behavior improved: repositories now use cached plans/sessions if API calls fail after login.
 
-PHASE 2 — Flutter ↔ API Integration
-2A: Token storage + HTTP client
+## Next Work
 
-Add flutter_secure_storage to pubspec.yaml
-Build ApiService class — handles all HTTP calls, attaches JWT token to every request automatically
-Build AuthService — handles register, login, logout, token retrieval
+### Phase 2H: Conflict Resolution
 
-2B: Login and register screens ✅
+- Define and enforce a simple last-write-wins strategy for sync conflicts.
 
-Build login and register UI screens in Flutter
-On first launch redirect to login screen
-On successful login redirect to home screen
+### Phase 4B: Additional Polish
 
-2C: Session persistence ✅
+- Add retry strategy for failed sync operations.
+- Validate migration path for any legacy local-only Hive data.
+- Performance optimizations and UI polish.
 
-If valid token exists on device, skip login screen automatically
-Handle token expiry — redirect to login
+## Deployment Notes
 
-2D: Repository swap ✅
+- Backend is deployed on Render.
+- Database is Supabase PostgreSQL.
 
-Rewrite WorkoutPlanRepository to call API instead of Hive
-Rewrite WorkoutSessionRepository to call API instead of Hive
-App works online only at this point
+## Tech Stack
 
-2E: Offline detection
-
-Add connectivity_plus to pubspec.yaml
-App detects online/offline state
-Show user a UI indicator when offline
-
-2F: Hive as read cache ✅
-
-On login, pull all data from API into Hive
-Repositories read from Hive, write to both Hive and API when online
-
-2G: Offline write queue ✅
-
-When offline, writes go to Hive only and get added to a local queue
-When back online, queue syncs to API automatically
-Handle sync failures gracefully
-COMPLETE - Full offline write capability with auto-sync
-
-2H: Conflict resolution
-
-Strategy: server always wins on initial sync, local wins on subsequent write conflicts
-Keep it simple — last write wins
-
-
-PHASE 3 — Deploy the API
-3A: Deploy to Railway
-
-Push gymapp_api to its own GitHub repository
-Connect repo to Railway
-Set environment variables: DATABASE_URL, JWT_SECRET, ACCESS_TOKEN_EXPIRE_MINUTES
-API is live on a public URL
-
-3B: Update Flutter
-
-Replace 127.0.0.1 hardcoded URL with production Railway URL
-Test on real device over mobile data
-
-
-PHASE 4 — Polish and edge cases
-
-Error handling throughout (network errors, 401s, server errors)
-Loading states in UI during API calls
-Retry logic for failed syncs
-Data migration for any existing local Hive data into the backend
-
-
-Tech stack summary:
-
-Flutter app: Provider, Hive (local cache), flutter_secure_storage, connectivity_plus
-Backend: FastAPI (Python), hosted on Railway
-Database: Supabase (PostgreSQL)
-Auth: Custom JWT in FastAPI
+- Flutter app: Provider, Hive (cache), flutter_secure_storage, connectivity_plus
+- Backend: FastAPI (Python), hosted on Render
+- Database: Supabase (PostgreSQL)
+- Auth: Custom JWT in FastAPI

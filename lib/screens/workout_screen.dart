@@ -130,21 +130,44 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       setState(() => _isSaving = true);
     }
 
-    final session = _getOrCreateSession();
-    final hasSets = session.exercises.any((e) => e.sets.isNotEmpty);
+    try {
+      final session = _getOrCreateSession();
+      final hasSets = session.exercises.any((e) => e.sets.isNotEmpty);
 
-    if (hasSets) {
-      final prs = PRTrackingService.checkForNewPRs(session.exercises);
+      if (hasSets) {
+        final prs = PRTrackingService.checkForNewPRs(session.exercises);
 
-      context.read<WorkoutSessionProvider>().startWorkout(
-            session.planName,
-            session.exercises,
-            weekNumber: _currentWeek,
-          );
-      await context.read<WorkoutSessionProvider>().saveWorkout();
+        context.read<WorkoutSessionProvider>().startWorkout(
+              session.planName,
+              session.exercises,
+              weekNumber: _currentWeek,
+            );
+        await context.read<WorkoutSessionProvider>().saveWorkout();
 
-      if (prs.isNotEmpty && mounted) {
-        _showPRDialog(prs);
+        if (prs.isNotEmpty && mounted) {
+          _showPRDialog(prs);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        final settings = context.read<SettingsProvider>();
+        final accent = settings.accentColor;
+        final error = errorColor(context);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '> Save failed: ${e.toString().replaceFirst('Exception: ', '')}',
+              style: GoogleFonts.jetBrainsMono(color: Colors.white),
+            ),
+            backgroundColor: error,
+            action: SnackBarAction(
+              label: 'RETRY',
+              textColor: accent,
+              onPressed: _autoSave,
+            ),
+          ),
+        );
       }
     }
 
@@ -553,11 +576,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final session = _getOrCreateSession();
     final settings = context.watch<SettingsProvider>();
     final accent = settings.accentColor;
-    final error = errorColor(context);
-    final surface = surfaceColor(context);
-    final border = borderColor(context);
-    final textPrimary = textPrimaryColor(context);
-    final textSecondary = textSecondaryColor(context);
 
     return Scaffold(
       backgroundColor: backgroundColor(context),
@@ -579,6 +597,44 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             planName: widget.plan.name,
             planIndex: widget.planIndex,
             accent: accent,
+          ),
+          // Add loading indicator for session provider
+          Consumer<WorkoutSessionProvider>(
+            builder: (context, sessionProvider, child) {
+              if (sessionProvider.isLoading) {
+                return Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: accent.withAlpha(26),
+                    border: Border(bottom: BorderSide(color: accent, width: 1)),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(accent),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '> LOADING SESSION DATA...',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: accent,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
           ),
           Expanded(
             child: _GestureClaimingContainer(

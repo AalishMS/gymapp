@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
@@ -6,53 +7,96 @@ class ApiService {
   final AuthService _authService = AuthService();
 
   Future<http.Response> get(String path) async {
-    final token = await _authService.getToken();
-    final response = await http.get(
-      Uri.parse('${AuthService.baseUrl}$path'),
-      headers: _buildHeaders(token),
-    );
-    if (response.statusCode == 401) {
-      await _authService.logout();
+    try {
+      final token = await _authService.getToken();
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}$path'),
+        headers: _buildHeaders(token),
+      );
+      await _handleErrorResponse(response);
+      return response;
+    } catch (e) {
+      throw _parseException(e);
     }
-    return response;
   }
 
   Future<http.Response> post(String path, Map<String, dynamic> body) async {
-    final token = await _authService.getToken();
-    final response = await http.post(
-      Uri.parse('${AuthService.baseUrl}$path'),
-      headers: _buildHeaders(token),
-      body: jsonEncode(body),
-    );
-    if (response.statusCode == 401) {
-      await _authService.logout();
+    try {
+      final token = await _authService.getToken();
+      final response = await http.post(
+        Uri.parse('${AuthService.baseUrl}$path'),
+        headers: _buildHeaders(token),
+        body: jsonEncode(body),
+      );
+      await _handleErrorResponse(response);
+      return response;
+    } catch (e) {
+      throw _parseException(e);
     }
-    return response;
   }
 
   Future<http.Response> put(String path, Map<String, dynamic> body) async {
-    final token = await _authService.getToken();
-    final response = await http.put(
-      Uri.parse('${AuthService.baseUrl}$path'),
-      headers: _buildHeaders(token),
-      body: jsonEncode(body),
-    );
-    if (response.statusCode == 401) {
-      await _authService.logout();
+    try {
+      final token = await _authService.getToken();
+      final response = await http.put(
+        Uri.parse('${AuthService.baseUrl}$path'),
+        headers: _buildHeaders(token),
+        body: jsonEncode(body),
+      );
+      await _handleErrorResponse(response);
+      return response;
+    } catch (e) {
+      throw _parseException(e);
     }
-    return response;
   }
 
   Future<http.Response> delete(String path) async {
-    final token = await _authService.getToken();
-    final response = await http.delete(
-      Uri.parse('${AuthService.baseUrl}$path'),
-      headers: _buildHeaders(token),
-    );
-    if (response.statusCode == 401) {
-      await _authService.logout();
+    try {
+      final token = await _authService.getToken();
+      final response = await http.delete(
+        Uri.parse('${AuthService.baseUrl}$path'),
+        headers: _buildHeaders(token),
+      );
+      await _handleErrorResponse(response);
+      return response;
+    } catch (e) {
+      throw _parseException(e);
     }
-    return response;
+  }
+
+  Future<void> _handleErrorResponse(http.Response response) async {
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await _authService.logout();
+      throw Exception("Session expired. Please login again.");
+    } else if (response.statusCode >= 500) {
+      throw Exception("Server error. Try again later.");
+    } else if (response.statusCode >= 400) {
+      // Try to parse error message from response body
+      try {
+        final errorData = jsonDecode(response.body);
+        final message = errorData['detail'] ??
+            errorData['message'] ??
+            "Something went wrong. Try again.";
+        throw Exception(message);
+      } catch (_) {
+        throw Exception("Something went wrong. Try again.");
+      }
+    }
+  }
+
+  Exception _parseException(dynamic error) {
+    if (error is SocketException ||
+        error.toString().contains('connection') ||
+        error.toString().contains('timeout') ||
+        error.toString().contains('network')) {
+      return Exception("Network error. Check your connection.");
+    }
+
+    if (error is Exception) {
+      return error;
+    }
+
+    return Exception("Something went wrong. Try again.");
   }
 
   Map<String, String> _buildHeaders(String? token) {

@@ -84,9 +84,22 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: Consumer<WorkoutPlanProvider>(
                 builder: (context, provider, child) {
+                  // Show loading state
+                  if (provider.isLoading) {
+                    return _buildLoadingState(context, accent);
+                  }
+
+                  // Show error state
+                  if (provider.error != null) {
+                    return _buildErrorState(context, provider, accent);
+                  }
+
+                  // Show empty state
                   if (provider.plans.isEmpty) {
                     return _buildEmptyState(context, provider, accent);
                   }
+
+                  // Show plan grid
                   return _buildPlanGrid(context, provider, accent);
                 },
               ),
@@ -219,6 +232,95 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Text('[ LOAD SAMPLE DATA ]',
                   style: GoogleFonts.jetBrainsMono()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState(BuildContext context, Color accent) {
+    final textSecondary = textSecondaryColor(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(accent),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '> LOADING PLANS...',
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 14,
+                color: textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(
+      BuildContext context, WorkoutPlanProvider provider, Color accent) {
+    final error = errorColor(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Error banner
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: error.withAlpha(26),
+                border: Border.all(color: error, width: 1),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    '> ERROR',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: error,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    provider.error ?? 'Unknown error occurred',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 12,
+                      color: error,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Retry button
+            OutlinedButton(
+              onPressed: () {
+                provider.loadPlans();
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: accent,
+                side: BorderSide(color: accent, width: 1),
+              ),
+              child: Text('[ RETRY ]', style: GoogleFonts.jetBrainsMono()),
             ),
           ],
         ),
