@@ -8,6 +8,8 @@ import '../models/workout_plan.dart';
 import '../models/exercise_template.dart';
 import '../theme/app_theme.dart';
 import '../services/connectivity_service.dart';
+import '../services/sync_service.dart';
+import '../services/sync_queue_service.dart';
 import 'create_plan_screen.dart';
 import 'edit_plan_screen.dart';
 import 'workout_screen.dart';
@@ -25,8 +27,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ConnectivityService _connectivityService = ConnectivityService();
+  final SyncService _syncService = SyncService.instance;
+  final SyncQueueService _syncQueueService = SyncQueueService.instance;
   late StreamSubscription<bool> _connectivitySubscription;
   bool _isOnline = true;
+  Timer? _syncStatusTimer;
 
   @override
   void initState() {
@@ -39,6 +44,11 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     _checkInitialConnectivity();
+
+    // Start periodic sync status updates for UI
+    _syncStatusTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (mounted) setState(() {}); // Refresh to update sync indicators
+    });
   }
 
   Future<void> _checkInitialConnectivity() async {
@@ -51,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _connectivitySubscription.cancel();
+    _syncStatusTimer?.cancel();
     super.dispose();
   }
 
@@ -278,6 +289,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const Spacer(),
+            _buildSyncIndicator(context),
+            const SizedBox(width: 8),
             Text(
               plan.name.toUpperCase(),
               style: GoogleFonts.jetBrainsMono(
@@ -439,5 +452,64 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Text('[ + ]',
           style: GoogleFonts.jetBrainsMono(fontWeight: FontWeight.bold)),
     );
+  }
+
+  Widget _buildSyncIndicator(BuildContext context) {
+    final queueLength = _syncQueueService.queueLength;
+    final isSyncing = _syncService.isSyncing;
+
+    if (queueLength == 0 && !isSyncing) {
+      return const SizedBox.shrink(); // No indicator when nothing to sync
+    }
+
+    final settings = Provider.of<SettingsProvider>(context);
+    final accent = settings.accentColor;
+
+    if (isSyncing) {
+      // Show syncing animation
+      return Row(
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(accent),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'SYNC',
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 10,
+              color: accent,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      );
+    } else {
+      // Show pending count
+      return GestureDetector(
+        onTap: () {
+          // Debug: Print queue status when tapped
+          _syncQueueService.printQueueStatus();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            border: Border.all(color: accent, width: 1),
+          ),
+          child: Text(
+            '$queueLength',
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 10,
+              color: accent,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
   }
 }

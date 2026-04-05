@@ -31,6 +31,7 @@ class SyncService {
 
   Future<void> processQueue() async {
     if (_isSyncing) {
+      print('Sync already in progress, skipping...');
       return; // Already syncing
     }
 
@@ -38,20 +39,40 @@ class SyncService {
 
     try {
       final queue = _syncQueueService.getQueue();
+      print('🔄 Starting sync: ${queue.length} operations queued');
+
+      if (queue.isEmpty) {
+        print('✅ No operations to sync');
+        return;
+      }
+
+      int successCount = 0;
 
       for (final operation in queue) {
         try {
+          print(
+              '🔄 Syncing ${operation.entity}_${operation.action} (${operation.id})');
           await _processOperation(operation);
           await _syncQueueService.removeFromQueue(operation.id);
+          successCount++;
+          print(
+              '✅ Successfully synced ${operation.entity}_${operation.action}');
         } catch (e) {
           // Log error but stop processing on first failure to maintain order
-          print('Sync failed for operation ${operation.id}: $e');
+          print('❌ Sync failed for operation ${operation.id}: $e');
           break;
         }
       }
 
-      // After successful partial/full sync, refresh repositories
-      await _refreshRepositories();
+      final remainingCount = queue.length - successCount;
+      if (successCount > 0) {
+        print(
+            '✅ Sync completed: $successCount operations synced, $remainingCount remaining');
+        // After successful partial/full sync, refresh repositories
+        await _refreshRepositories();
+      } else {
+        print('❌ No operations synced successfully');
+      }
     } finally {
       _isSyncing = false;
     }

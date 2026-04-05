@@ -72,6 +72,37 @@ class SyncQueueService {
 
   int get queueLength => _queueBox.length;
 
+  // Debug methods
+  void printQueueStatus() {
+    final queue = getQueue();
+    print('📋 Sync Queue Status: ${queue.length} operations');
+    if (queue.isEmpty) {
+      print('   Queue is empty');
+    } else {
+      for (int i = 0; i < queue.length; i++) {
+        final op = queue[i];
+        final timeAgo = DateTime.now().difference(op.timestamp).inMinutes;
+        print(
+            '   ${i + 1}. ${op.entity}_${op.action} (${timeAgo}min ago) - ${op.id}');
+      }
+    }
+  }
+
+  Map<String, dynamic> getQueueSummary() {
+    final queue = getQueue();
+    final summary = <String, int>{};
+    for (final op in queue) {
+      final key = '${op.entity}_${op.action}';
+      summary[key] = (summary[key] ?? 0) + 1;
+    }
+    return {
+      'total': queue.length,
+      'operations': summary,
+      'oldestTimestamp':
+          queue.isNotEmpty ? queue.first.timestamp.toIso8601String() : null,
+    };
+  }
+
   // Convenience methods for common operations
   Future<void> addPlanCreate(WorkoutPlan plan) async {
     await addToQueue('create', 'plan', plan.toJson());
