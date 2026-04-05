@@ -49,11 +49,10 @@ class SampleDataSeeder {
         exercises: [
           ExerciseTemplate(name: 'Squat', sets: 4),
           ExerciseTemplate(name: 'Romanian Deadlift', sets: 3),
+          ExerciseTemplate(name: 'Bulgarian Split Squat', sets: 3),
           ExerciseTemplate(name: 'Leg Press', sets: 3),
-          ExerciseTemplate(name: 'Leg Extension', sets: 3),
-          ExerciseTemplate(name: 'Leg Curl', sets: 3),
           ExerciseTemplate(name: 'Calf Raise', sets: 4),
-          ExerciseTemplate(name: 'Hip Thrust', sets: 3),
+          ExerciseTemplate(name: 'Leg Curl', sets: 3),
         ],
       ),
       WorkoutPlan(
@@ -80,9 +79,14 @@ class SampleDataSeeder {
       ),
     ];
 
+    // Add to both Hive storage (for compatibility) and Cache service (for providers)
+    final cacheService = CacheService();
     for (var plan in plans) {
       await HiveService.addPlan(plan);
     }
+
+    // Also save all plans to cache so providers can read them
+    await cacheService.savePlans(plans);
   }
 
   static Future<void> _createSampleSessions() async {
@@ -962,9 +966,14 @@ class SampleDataSeeder {
       ),
     ];
 
+    // Add to both Hive storage (for compatibility) and Cache service (for providers)
+    final cacheService = CacheService();
     for (var session in sessions) {
       await HiveService.addSession(session);
     }
+
+    // Also save all sessions to cache so providers can read them
+    await cacheService.saveSessions(sessions);
   }
 
   static Future<void> clearAllData() async {
