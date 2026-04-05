@@ -18,18 +18,26 @@ class WorkoutPlanRepository {
     final isOnline = await _connectivityService.isOnline();
 
     if (isOnline) {
-      final response = await _apiService.get('/plans');
-      if (response.statusCode != 200) {
-        throw Exception(
-            'Failed to load plans: ${response.statusCode} ${response.body}');
+      try {
+        final response = await _apiService.get('/plans');
+        if (response.statusCode == 200) {
+          final List<dynamic> data = jsonDecode(response.body);
+          _cachedPlans = data.map((json) => _planFromJson(json)).toList();
+
+          // Save to cache
+          await _cacheService.savePlans(_cachedPlans);
+
+          return _cachedPlans;
+        } else {
+          // API returned error status, fall back to cache
+          print('API returned ${response.statusCode}, falling back to cache');
+          return await _cacheService.getPlans();
+        }
+      } catch (e) {
+        // API call failed (network error, timeout, etc.), fall back to cache
+        print('API call failed: $e, falling back to cache');
+        return await _cacheService.getPlans();
       }
-      final List<dynamic> data = jsonDecode(response.body);
-      _cachedPlans = data.map((json) => _planFromJson(json)).toList();
-
-      // Save to cache
-      await _cacheService.savePlans(_cachedPlans);
-
-      return _cachedPlans;
     } else {
       // Return cached plans when offline
       return await _cacheService.getPlans();

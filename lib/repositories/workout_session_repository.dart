@@ -25,19 +25,32 @@ class WorkoutSessionRepository {
     final isOnline = await _connectivityService.isOnline();
 
     if (isOnline) {
-      final response = await _apiService.get('/sessions');
-      if (response.statusCode != 200) {
-        throw Exception(
-            'Failed to load sessions: ${response.statusCode} ${response.body}');
+      try {
+        final response = await _apiService.get('/sessions');
+        if (response.statusCode == 200) {
+          final List<dynamic> data = jsonDecode(response.body);
+          _cachedSessions = data.map((json) => _sessionFromJson(json)).toList();
+          _cachedSessions.sort((a, b) => b.date.compareTo(a.date));
+
+          // Save to cache
+          await _cacheService.saveSessions(_cachedSessions);
+
+          return _cachedSessions;
+        } else {
+          // API returned error status, fall back to cache
+          print(
+              'Sessions API returned ${response.statusCode}, falling back to cache');
+          final cached = await _cacheService.getSessions();
+          cached.sort((a, b) => b.date.compareTo(a.date));
+          return cached;
+        }
+      } catch (e) {
+        // API call failed (network error, timeout, etc.), fall back to cache
+        print('Sessions API call failed: $e, falling back to cache');
+        final cached = await _cacheService.getSessions();
+        cached.sort((a, b) => b.date.compareTo(a.date));
+        return cached;
       }
-      final List<dynamic> data = jsonDecode(response.body);
-      _cachedSessions = data.map((json) => _sessionFromJson(json)).toList();
-      _cachedSessions.sort((a, b) => b.date.compareTo(a.date));
-
-      // Save to cache
-      await _cacheService.saveSessions(_cachedSessions);
-
-      return _cachedSessions;
     } else {
       // Return cached sessions when offline
       final cached = await _cacheService.getSessions();
