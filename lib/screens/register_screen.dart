@@ -55,14 +55,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    final success = await _authService.register(email, password);
+    if (password.length < 6) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Password must be at least 6 characters';
+      });
+      return;
+    }
+
+    final result = await _authService.register(email, password);
 
     if (mounted) {
       setState(() {
         _isLoading = false;
       });
 
-      if (success) {
+      if (result.success) {
         Navigator.pushReplacementNamed(context, '/login');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -75,7 +83,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       } else {
         setState(() {
-          _errorMessage = 'Registration failed. Try a different email.';
+          _errorMessage = result.errorMessage ?? 'Registration failed';
         });
       }
     }
