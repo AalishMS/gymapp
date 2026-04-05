@@ -20,6 +20,14 @@ Completed:
 
 ## Recent Changes
 
+- **Phase 4C completed**: Offline mode icon in AppBar implemented across all screens:
+  - Created reusable OfflineIndicator widget (lib/widgets/offline_indicator.dart) with terminal aesthetic using wifi-off icon in error color
+  - Added OfflineIndicator to AppBar actions in all screens: HistoryScreen, StatsScreen, SettingsScreen, WorkoutScreen, CreatePlanScreen, EditPlanScreen
+  - Integrated OfflineIndicator into HomeScreen custom header alongside existing navigation icons
+  - Removed intrusive offline banner from HomeScreen - replaced with subtle AppBar icon across all screens
+  - OfflineIndicator listens to ConnectivityService.onConnectivityChanged stream and shows/hides automatically based on connectivity state
+  - Maintains consistent terminal UI aesthetic with error color theming and proper lifecycle management
+
 - **Phase 4A completed**: Comprehensive error handling and loading states implemented throughout the app:
   - Added `isLoading` boolean fields to WorkoutPlanProvider and WorkoutSessionProvider with proper state management
   - Enhanced ApiService with structured error handling for network errors (timeout, no connection), 401/403 (session expired), 500+ (server errors)

@@ -7,6 +7,7 @@ import '../models/workout_session.dart';
 import '../models/exercise.dart';
 import '../models/set.dart' as gym;
 import '../theme/app_theme.dart';
+import '../widgets/offline_indicator.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -28,6 +29,9 @@ class HistoryScreen extends StatelessWidget {
           icon: Icon(Icons.arrow_back, color: accent),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          const OfflineIndicator(),
+        ],
       ),
       body: Consumer<WorkoutSessionProvider>(
         builder: (context, provider, child) {

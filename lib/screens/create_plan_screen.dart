@@ -7,6 +7,7 @@ import '../models/workout_plan.dart';
 import '../models/exercise_template.dart';
 import '../data/exercise_library.dart';
 import '../theme/app_theme.dart';
+import '../widgets/offline_indicator.dart';
 
 class _ExerciseSetData {
   final int reps;
@@ -331,6 +332,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          const OfflineIndicator(),
           InkWell(
             onTap: _savePlan,
             splashColor: accent.withValues(alpha: 0.2),

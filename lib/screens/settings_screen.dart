@@ -7,6 +7,7 @@ import '../providers/workout_session_provider.dart';
 import '../services/auth_service.dart';
 import '../services/sample_data_seeder.dart';
 import '../theme/app_theme.dart';
+import '../widgets/offline_indicator.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -39,6 +40,9 @@ class SettingsScreen extends StatelessWidget {
           icon: Icon(Icons.arrow_back, color: accent),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          const OfflineIndicator(),
+        ],
       ),
       body: Consumer<SettingsProvider>(
         builder: (context, settings, child) {

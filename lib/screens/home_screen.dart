@@ -7,9 +7,9 @@ import '../providers/settings_provider.dart';
 import '../models/workout_plan.dart';
 import '../models/exercise_template.dart';
 import '../theme/app_theme.dart';
-import '../services/connectivity_service.dart';
 import '../services/sync_service.dart';
 import '../services/sync_queue_service.dart';
+import '../widgets/offline_indicator.dart';
 import 'create_plan_screen.dart';
 import 'edit_plan_screen.dart';
 import 'workout_screen.dart';
@@ -26,24 +26,13 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final ConnectivityService _connectivityService = ConnectivityService();
   final SyncService _syncService = SyncService.instance;
   final SyncQueueService _syncQueueService = SyncQueueService.instance;
-  late StreamSubscription<bool> _connectivitySubscription;
-  bool _isOnline = true;
   Timer? _syncStatusTimer;
 
   @override
   void initState() {
     super.initState();
-    _connectivityService.startListening();
-    _connectivitySubscription =
-        _connectivityService.onConnectivityChanged.listen((isOnline) {
-      if (mounted) {
-        setState(() => _isOnline = isOnline);
-      }
-    });
-    _checkInitialConnectivity();
 
     // Start periodic sync status updates for UI
     _syncStatusTimer = Timer.periodic(const Duration(seconds: 2), (_) {
@@ -51,16 +40,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _checkInitialConnectivity() async {
-    final online = await _connectivityService.isOnline();
-    if (mounted) {
-      setState(() => _isOnline = online);
-    }
-  }
-
   @override
   void dispose() {
-    _connectivitySubscription.cancel();
     _syncStatusTimer?.cancel();
     super.dispose();
   }
@@ -79,7 +60,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!_isOnline) _buildOfflineBanner(error, border),
             _buildHeader(context, accent, border),
             Expanded(
               child: Consumer<WorkoutPlanProvider>(
@@ -111,25 +91,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildOfflineBanner(Color error, Color border) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      decoration: BoxDecoration(
-        color: error.withAlpha(26),
-        border: Border(bottom: BorderSide(color: error, width: 1)),
-      ),
-      child: Text(
-        '> OFFLINE MODE',
-        style: GoogleFonts.jetBrainsMono(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: error,
-        ),
-      ),
-    );
-  }
-
   Widget _buildHeader(BuildContext context, Color accent, Color border) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -147,6 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const Spacer(),
+          const OfflineIndicator(),
           _buildIconButton(
             icon: Icons.bar_chart,
             onTap: () => Navigator.push(context,

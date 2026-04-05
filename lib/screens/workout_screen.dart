@@ -13,6 +13,7 @@ import '../providers/settings_provider.dart';
 import '../services/pr_tracking_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/fade_page_route.dart';
+import '../widgets/offline_indicator.dart';
 import '../utils/weight_utils.dart';
 import '../widgets/workout/exercise_card.dart';
 import '../widgets/workout/workout_dialogs.dart';
@@ -666,6 +667,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             Navigator.pop(context);
           },
         ),
+        actions: [
+          const OfflineIndicator(),
+        ],
         bottom: _buildPlanTabBar(accent),
       ),
       body: Column(

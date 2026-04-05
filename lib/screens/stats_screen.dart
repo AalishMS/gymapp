@@ -7,6 +7,7 @@ import '../repositories/stats_repository.dart';
 import '../repositories/workout_session_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/weight_utils.dart';
+import '../widgets/offline_indicator.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -98,6 +99,9 @@ class _StatsScreenState extends State<StatsScreen> {
             icon: Icon(Icons.arrow_back, color: accent),
             onPressed: () => Navigator.pop(context),
           ),
+          actions: [
+            const OfflineIndicator(),
+          ],
         ),
         body: Center(
           child: CircularProgressIndicator(color: accent),
@@ -120,6 +124,9 @@ class _StatsScreenState extends State<StatsScreen> {
           icon: Icon(Icons.arrow_back, color: accent),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          const OfflineIndicator(),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
