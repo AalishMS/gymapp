@@ -366,10 +366,12 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                   Icon(Icons.info_outline,
                       size: 16, color: textSecondaryColor(context)),
                   const SizedBox(width: 8),
-                  Text(
-                    'Tap [+ ADD EXERCISE] below to add exercises',
-                    style: GoogleFonts.jetBrainsMono(
-                        fontSize: 12, color: textSecondaryColor(context)),
+                  Expanded(
+                    child: Text(
+                      'Tap [+ ADD EXERCISE] below to add exercises',
+                      style: GoogleFonts.jetBrainsMono(
+                          fontSize: 12, color: textSecondaryColor(context)),
+                    ),
                   ),
                 ],
               ),
