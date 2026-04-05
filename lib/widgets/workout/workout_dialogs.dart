@@ -5,10 +5,12 @@ import '../../models/set.dart' as gym;
 import '../../providers/settings_provider.dart';
 import '../../services/pr_tracking_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/weight_utils.dart';
 
 class WorkoutDialogs {
   static void showPRDialog(BuildContext context, List<PRResult> prs) {
-    final accent = context.read<SettingsProvider>().accentColor;
+    final settings = context.read<SettingsProvider>();
+    final accent = settings.accentColor;
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -41,7 +43,7 @@ class WorkoutDialogs {
                             style: GoogleFonts.jetBrainsMono(
                                 fontWeight: FontWeight.bold)),
                         Text(
-                          '${pr.newPR}kg (Previous: ${pr.previousPR}kg)',
+                          '${WeightUtils.formatWeight(pr.newPR, settings.weightUnit)} (Previous: ${WeightUtils.formatWeight(pr.previousPR, settings.weightUnit)})',
                           style: GoogleFonts.jetBrainsMono(
                               fontSize: 12, color: textSecondaryColor(context)),
                         ),
@@ -294,8 +296,8 @@ class WorkoutDialogs {
                     const SizedBox(height: 16),
                     TextField(
                       controller: weightController,
-                      decoration: const InputDecoration(
-                        labelText: 'Weight (kg)',
+                      decoration: InputDecoration(
+                        labelText: 'Weight (${settings.weightUnit})',
                         hintText: 'e.g., 50',
                       ),
                       keyboardType:
@@ -463,8 +465,8 @@ class WorkoutDialogs {
                     const SizedBox(height: 16),
                     TextField(
                       controller: weightController,
-                      decoration:
-                          const InputDecoration(labelText: 'Weight (kg)'),
+                      decoration: InputDecoration(
+                          labelText: 'Weight (${settings.weightUnit})'),
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                     ),

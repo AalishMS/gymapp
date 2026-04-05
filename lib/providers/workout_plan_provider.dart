@@ -33,51 +33,39 @@ class WorkoutPlanProvider with ChangeNotifier {
     }
   }
 
-  Future<void> addPlan(WorkoutPlan plan) async {
+  void addPlan(WorkoutPlan plan) {
     try {
-      _isLoading = true;
       _error = null;
+      _repository.addPlan(plan); // No await - optimistic update
+      _plans = _repository.cachedPlans;
       notifyListeners();
-
-      await _repository.addPlan(plan);
-      loadPlans();
     } catch (e) {
-      _isLoading = false;
       _error = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
-      rethrow;
     }
   }
 
-  Future<void> updatePlan(int index, WorkoutPlan plan) async {
+  void updatePlan(int index, WorkoutPlan plan) {
     try {
-      _isLoading = true;
       _error = null;
+      _repository.updatePlan(index, plan); // No await - optimistic update
+      _plans = _repository.cachedPlans;
       notifyListeners();
-
-      await _repository.updatePlan(index, plan);
-      loadPlans();
     } catch (e) {
-      _isLoading = false;
       _error = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
-      rethrow;
     }
   }
 
-  Future<void> deletePlan(int index) async {
+  void deletePlan(int index) {
     try {
-      _isLoading = true;
       _error = null;
+      _repository.deletePlan(index); // No await - optimistic update
+      _plans = _repository.cachedPlans;
       notifyListeners();
-
-      await _repository.deletePlan(index);
-      loadPlans();
     } catch (e) {
-      _isLoading = false;
       _error = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
-      rethrow;
     }
   }
 }

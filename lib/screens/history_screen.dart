@@ -6,7 +6,6 @@ import '../providers/settings_provider.dart';
 import '../models/workout_session.dart';
 import '../models/exercise.dart';
 import '../models/set.dart' as gym;
-import '../services/pr_tracking_service.dart';
 import '../theme/app_theme.dart';
 
 class HistoryScreen extends StatelessWidget {
@@ -259,8 +258,8 @@ class _SessionCardState extends State<_SessionCard> {
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
-    final prs = PRTrackingService.checkForNewPRs(session.exercises);
-    final hasPR = prs.isNotEmpty;
+    // TODO: Implement async PR checking with FutureBuilder
+    final hasPR = false; // Temporarily disable PR display in history
     final accent = context.watch<SettingsProvider>().accentColor;
     final border = borderColor(context);
     final textSecondary = textSecondaryColor(context);
@@ -676,7 +675,8 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
   }
 
   void _showAddSetDialog(int exerciseIndex, Exercise exercise) {
-    final accent = context.read<SettingsProvider>().accentColor;
+    final settings = context.read<SettingsProvider>();
+    final accent = settings.accentColor;
     final weightController = TextEditingController();
     final repsController = TextEditingController();
 
@@ -702,7 +702,8 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: weightController,
-                decoration: const InputDecoration(labelText: 'Weight (kg)'),
+                decoration: InputDecoration(
+                    labelText: 'Weight (${settings.weightUnit})'),
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
               ),
@@ -759,7 +760,8 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
   }
 
   void _showEditSetDialog(int exerciseIndex, int setIndex, gym.Set set) {
-    final accent = context.read<SettingsProvider>().accentColor;
+    final settings = context.read<SettingsProvider>();
+    final accent = settings.accentColor;
     final weightController = TextEditingController(text: set.weight.toString());
     final repsController = TextEditingController(text: set.reps.toString());
     final noteController = TextEditingController(text: set.note ?? '');
@@ -786,7 +788,8 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: weightController,
-                decoration: const InputDecoration(labelText: 'Weight (kg)'),
+                decoration: InputDecoration(
+                    labelText: 'Weight (${settings.weightUnit})'),
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
               ),

@@ -11,23 +11,89 @@ class HiveService {
   static const String sessionsBox = 'workout_sessions';
 
   static Future<void> init() async {
-    await Hive.initFlutter();
+    try {
+      await Hive.initFlutter();
 
-    // Register adapters
-    Hive.registerAdapter(SetAdapter());
-    Hive.registerAdapter(ExerciseAdapter());
-    Hive.registerAdapter(ExerciseTemplateAdapter());
-    Hive.registerAdapter(WorkoutPlanAdapter());
-    Hive.registerAdapter(WorkoutSessionAdapter());
-    Hive.registerAdapter(QueuedOperationAdapter());
+      // Register adapters
+      Hive.registerAdapter(SetAdapter());
+      Hive.registerAdapter(ExerciseAdapter());
+      Hive.registerAdapter(ExerciseTemplateAdapter());
+      Hive.registerAdapter(WorkoutPlanAdapter());
+      Hive.registerAdapter(WorkoutSessionAdapter());
+      Hive.registerAdapter(QueuedOperationAdapter());
 
-    // Open boxes
-    await Hive.openBox<WorkoutPlan>(plansBox);
-    await Hive.openBox<WorkoutSession>(sessionsBox);
+      // Try to open boxes - if corrupted, reset database
+      try {
+        await Hive.openBox<WorkoutPlan>(plansBox);
+        await Hive.openBox<WorkoutSession>(sessionsBox);
+        await Hive.openBox('plans_cache');
+        await Hive.openBox('sessions_cache');
+      } catch (e) {
+        print('Database corruption detected: $e');
+        print('Clearing corrupted database...');
+        await _handleDatabaseCorruption();
 
-    // Open cache boxes
-    await Hive.openBox('plans_cache');
-    await Hive.openBox('sessions_cache');
+        // Try again after reset
+        await Hive.openBox<WorkoutPlan>(plansBox);
+        await Hive.openBox<WorkoutSession>(sessionsBox);
+        await Hive.openBox('plans_cache');
+        await Hive.openBox('sessions_cache');
+        print('Database reset successful');
+      }
+    } catch (e) {
+      print('Critical error initializing Hive: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> _handleDatabaseCorruption() async {
+    try {
+      // Close all open boxes first
+      try {
+        await Hive.close();
+      } catch (e) {
+        print('Warning: Error closing boxes: $e');
+      }
+
+      // Try to delete individual boxes by name
+      final boxNames = [
+        'workout_plans',
+        'workout_sessions',
+        'plans_cache',
+        'sessions_cache'
+      ];
+      for (final boxName in boxNames) {
+        try {
+          if (Hive.isBoxOpen(boxName)) {
+            await Hive.box(boxName).deleteFromDisk();
+            print('Deleted box: $boxName');
+          }
+        } catch (e) {
+          print('Could not delete box $boxName: $e');
+        }
+      }
+
+      // Reinitialize Hive
+      await Hive.initFlutter();
+
+      // Re-register adapters
+      Hive.registerAdapter(SetAdapter());
+      Hive.registerAdapter(ExerciseAdapter());
+      Hive.registerAdapter(ExerciseTemplateAdapter());
+      Hive.registerAdapter(WorkoutPlanAdapter());
+      Hive.registerAdapter(WorkoutSessionAdapter());
+      Hive.registerAdapter(QueuedOperationAdapter());
+
+      print('Database corruption handled successfully');
+    } catch (e) {
+      print('Error during database reset: $e');
+      // Continue anyway - better to have empty database than corrupted one
+    }
+  }
+
+  static Future<void> resetDatabase() async {
+    await _handleDatabaseCorruption();
+    await init();
   }
 
   // Workout Plan operations

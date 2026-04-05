@@ -2,11 +2,12 @@ import 'package:flutter/foundation.dart';
 import '../models/set.dart' as gym;
 import '../models/exercise.dart';
 import '../repositories/workout_session_repository.dart';
+import '../utils/weight_utils.dart';
 
 class ProgressionProvider with ChangeNotifier {
   final WorkoutSessionRepository _repository = WorkoutSessionRepository();
 
-  String getSuggestion(String exerciseName, int targetReps) {
+  String getSuggestion(String exerciseName, int targetReps, String weightUnit) {
     final lastSession = _repository.getLastSessionForExercise(exerciseName);
 
     if (lastSession == null) {
@@ -29,7 +30,7 @@ class ProgressionProvider with ChangeNotifier {
     bool allSetsCompleted = lastExercise.sets.every((set) => set.reps > 0);
 
     if (!allSetsCompleted) {
-      return 'Last: ${_formatSets(lastExercise.sets)} → Try completing all sets';
+      return 'Last: ${_formatSets(lastExercise.sets, weightUnit)} → Try completing all sets';
     }
 
     // Get last weight and reps
@@ -40,15 +41,17 @@ class ProgressionProvider with ChangeNotifier {
     if (lastReps >= targetReps) {
       // Hit target reps, increase weight
       double newWeight = lastWeight + 2.5;
-      return 'Last: ${lastWeight}kg x $lastReps → Suggested: ${newWeight}kg x $targetReps';
+      return 'Last: ${WeightUtils.formatWeight(lastWeight, weightUnit)} x $lastReps → Suggested: ${WeightUtils.formatWeight(newWeight, weightUnit)} x $targetReps';
     } else {
       // Didn't hit target reps, increase reps
       int newReps = lastReps + 1;
-      return 'Last: ${lastWeight}kg x $lastReps → Suggested: ${lastWeight}kg x $newReps';
+      return 'Last: ${WeightUtils.formatWeight(lastWeight, weightUnit)} x $lastReps → Suggested: ${WeightUtils.formatWeight(lastWeight, weightUnit)} x $newReps';
     }
   }
 
-  String _formatSets(List<gym.Set> sets) {
-    return sets.map((s) => '${s.weight}kg x ${s.reps}').join(', ');
+  String _formatSets(List<gym.Set> sets, String weightUnit) {
+    return sets
+        .map((s) => WeightUtils.formatSetWeight(s.weight, weightUnit, s.reps))
+        .join(', ');
   }
 }

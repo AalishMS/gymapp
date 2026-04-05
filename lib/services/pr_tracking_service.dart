@@ -22,14 +22,14 @@ class PRResult {
 class PRTrackingService {
   static final StatsRepository _statsRepo = StatsRepository();
 
-  static List<PRResult> checkForNewPRs(List<Exercise> exercises) {
+  static Future<List<PRResult>> checkForNewPRs(List<Exercise> exercises) async {
     final results = <PRResult>[];
 
     for (var exercise in exercises) {
       if (exercise.sets.isEmpty) continue;
 
       for (var set in exercise.sets) {
-        final currentPR = _statsRepo.getExercisePR(exercise.name);
+        final currentPR = await _statsRepo.getExercisePR(exercise.name);
 
         if (set.weight > currentPR) {
           results.add(PRResult(

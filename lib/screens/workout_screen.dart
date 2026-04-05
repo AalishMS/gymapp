@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,6 +13,7 @@ import '../providers/settings_provider.dart';
 import '../services/pr_tracking_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/fade_page_route.dart';
+import '../utils/weight_utils.dart';
 import '../widgets/workout/exercise_card.dart';
 import '../widgets/workout/workout_dialogs.dart';
 
@@ -29,8 +31,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   List<int> _weeks = [1];
   int _currentWeekIndex = 0;
   final Map<int, WorkoutSession> _weekSessions = {};
-  bool _isSaving = false;
   final ScrollController _weekNavScrollController = ScrollController();
+
+  // Debounced autosave
+  Timer? _autosaveDebounceTimer;
+  bool _hasPendingSave = false;
 
   @override
   void initState() {
@@ -44,6 +49,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   @override
   void dispose() {
     _weekNavScrollController.dispose();
+    _autosaveDebounceTimer?.cancel();
     super.dispose();
   }
 
@@ -84,6 +90,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   gym.Set? _getLastSetForExerciseInPlan(String exerciseName) {
     final sessionProvider = context.read<WorkoutSessionProvider>();
     final currentWeek = _weeks[_currentWeekIndex];
+
     if (currentWeek > 1) {
       final prevWeekSession = sessionProvider.getSessionForPlanAndWeek(
         widget.plan.name,
@@ -98,11 +105,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         }
       }
     }
+
+    // Fallback: get last set from any session for this exercise
     return sessionProvider.getLastSetForExercise(exerciseName);
   }
 
   Future<void> _onWeekChanged(int newIndex) async {
-    await _autoSave();
+    _autoSave(); // Trigger debounced save, don't await
     if (mounted) {
       setState(() {
         _currentWeekIndex = newIndex;
@@ -114,7 +123,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   Future<void> _addNewWeek() async {
-    await _autoSave();
+    _autoSave(); // Trigger debounced save, don't await
     final lastWeek = _weeks.last;
     if (mounted) {
       setState(() {
@@ -124,31 +133,52 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     }
   }
 
-  Future<void> _autoSave() async {
-    if (_isSaving) return;
-    if (mounted) {
-      setState(() => _isSaving = true);
-    }
+  // Debounced autosave - triggers save 2 seconds after user stops making changes
+  void _autoSave() {
+    _hasPendingSave = true;
+    _autosaveDebounceTimer?.cancel();
+    _autosaveDebounceTimer = Timer(const Duration(seconds: 2), () {
+      if (_hasPendingSave && mounted) {
+        _performSave();
+      }
+    });
+  }
+
+  // Immediate save for when user explicitly saves (e.g., finish workout button)
+  Future<void> _performSaveImmediate() async {
+    _autosaveDebounceTimer?.cancel();
+    _hasPendingSave = false;
+    await _performSave();
+  }
+
+  // Background save operation - never blocks UI
+  Future<void> _performSave() async {
+    _hasPendingSave = false;
 
     try {
       final session = _getOrCreateSession();
       final hasSets = session.exercises.any((e) => e.sets.isNotEmpty);
 
       if (hasSets) {
-        final prs = PRTrackingService.checkForNewPRs(session.exercises);
+        // Background PR check
+        PRTrackingService.checkForNewPRs(session.exercises).then((prs) {
+          if (prs.isNotEmpty && mounted) {
+            _showPRBanner(prs);
+          }
+        });
 
+        // Save workout - this now uses optimistic updates, so it's instant
         context.read<WorkoutSessionProvider>().startWorkout(
               session.planName,
               session.exercises,
               weekNumber: _currentWeek,
             );
-        await context.read<WorkoutSessionProvider>().saveWorkout();
-
-        if (prs.isNotEmpty && mounted) {
-          _showPRDialog(prs);
-        }
+        context
+            .read<WorkoutSessionProvider>()
+            .saveWorkout(); // No await - now instant
       }
     } catch (e) {
+      // Only show errors for actual problems, don't block UI
       if (mounted) {
         final settings = context.read<SettingsProvider>();
         final accent = settings.accentColor;
@@ -157,27 +187,74 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '> Save failed: ${e.toString().replaceFirst('Exception: ', '')}',
+              '> Background save failed: ${e.toString().replaceFirst('Exception: ', '')}',
               style: GoogleFonts.jetBrainsMono(color: Colors.white),
             ),
             backgroundColor: error,
             action: SnackBarAction(
               label: 'RETRY',
               textColor: accent,
-              onPressed: _autoSave,
+              onPressed: () => _performSave(),
             ),
           ),
         );
       }
     }
-
-    if (mounted) {
-      setState(() => _isSaving = false);
-    }
   }
 
-  void _showPRDialog(List<PRResult> prs) {
-    WorkoutDialogs.showPRDialog(context, prs);
+  // Show PR celebration as non-blocking banner instead of dialog
+  void _showPRBanner(List<PRResult> prs) {
+    final settings = context.read<SettingsProvider>();
+    final accent = settings.accentColor;
+
+    ScaffoldMessenger.of(context).showMaterialBanner(
+      MaterialBanner(
+        backgroundColor: accent.withAlpha(20),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '🎉 NEW PERSONAL RECORD${prs.length > 1 ? 'S' : ''}!',
+              style: GoogleFonts.jetBrainsMono(
+                fontWeight: FontWeight.bold,
+                color: accent,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 4),
+            ...prs.map((pr) => Text(
+                  '${pr.exerciseName}: ${WeightUtils.formatWeight(pr.previousPR, settings.weightUnit)} → ${WeightUtils.formatWeight(pr.newPR, settings.weightUnit)}',
+                  style: GoogleFonts.jetBrainsMono(
+                    color: textPrimaryColor(context),
+                    fontSize: 12,
+                  ),
+                )),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+            },
+            child: Text(
+              'NICE!',
+              style: GoogleFonts.jetBrainsMono(
+                color: accent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Auto-dismiss after 4 seconds
+    Timer(const Duration(seconds: 4), () {
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+      }
+    });
   }
 
   int get _currentWeek => _weeks[_currentWeekIndex];
@@ -492,8 +569,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         }
         try {
           final sessionProvider = context.read<WorkoutSessionProvider>();
-          await sessionProvider.renameSessionWeek(
-              widget.plan.name, week, newWeek);
+          sessionProvider.renameSessionWeek(
+              widget.plan.name, week, newWeek); // No await - now instant
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -530,8 +607,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     if (confirmed && mounted) {
       try {
         final sessionProvider = context.read<WorkoutSessionProvider>();
-        await sessionProvider.deleteSessionForPlanAndWeek(
-            widget.plan.name, week);
+        sessionProvider.deleteSessionForPlanAndWeek(
+            widget.plan.name, week); // No await - now instant
         if (mounted) {
           setState(() {
             _weeks.removeAt(index);
@@ -864,27 +941,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 },
               ),
             ),
-            if (_isSaving)
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: accent),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '> Auto-saving...',
-                      style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10, color: textSecondaryColor(context)),
-                    ),
-                  ],
-                ),
-              ),
+            // Removed blocking autosave loading indicator - saves are now background
           ],
         ),
       ),

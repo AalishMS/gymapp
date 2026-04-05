@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../models/set.dart' as gym;
 import '../../theme/app_theme.dart';
+import '../../providers/settings_provider.dart';
+import '../../utils/weight_utils.dart';
 
 class SetRow extends StatelessWidget {
   final int setIndex;
@@ -54,7 +57,9 @@ class SetRow extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Text(
-                  '${set.weight}kg x ${set.reps}${set.rpe != null ? ' @${set.rpe}' : ''}',
+                  WeightUtils.formatSetWeight(set.weight,
+                      context.watch<SettingsProvider>().weightUnit, set.reps,
+                      rpe: set.rpe),
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,

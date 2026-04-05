@@ -1,27 +1,35 @@
-import '../services/hive_service.dart';
+import '../services/cache_service.dart';
+import '../models/workout_session.dart';
 
 class StatsRepository {
-  double getExercisePR(String exerciseName) {
-    return HiveService.getExercisePR(exerciseName);
+  final CacheService _cacheService = CacheService();
+
+  Future<double> getExercisePR(String exerciseName) async {
+    return await _cacheService.getExercisePR(exerciseName);
   }
 
-  List<String> getAllExerciseNames() {
-    return HiveService.getAllExerciseNames();
+  Future<List<String>> getAllExerciseNames() async {
+    return await _cacheService.getAllExerciseNames();
   }
 
-  Map<String, double> getAllExercisePRs() {
-    return HiveService.getAllExercisePRs();
+  Future<Map<String, double>> getAllExercisePRs() async {
+    return await _cacheService.getAllExercisePRs();
   }
 
-  List<Map<String, dynamic>> getExerciseProgression(String exerciseName) {
-    return HiveService.getExerciseProgression(exerciseName);
+  Future<List<Map<String, dynamic>>> getExerciseProgression(
+      String exerciseName) async {
+    return await _cacheService.getExerciseProgression(exerciseName);
   }
 
-  int getWorkoutsThisWeek() {
-    return HiveService.getWorkoutsThisWeek();
+  Future<int> getWorkoutsThisWeek() async {
+    return await _cacheService.getWorkoutsThisWeek();
   }
 
-  Map<int, int> getWorkoutFrequency(int weeksBack) {
-    return HiveService.getWorkoutFrequency(weeksBack);
+  Future<Map<int, int>> getWorkoutFrequency(int weeksBack) async {
+    return await _cacheService.getWorkoutFrequency(weeksBack);
+  }
+
+  Future<List<WorkoutSession>> getSessionsForPlan(String planName) async {
+    return await _cacheService.getSessionsForPlan(planName);
   }
 }

@@ -6,6 +6,7 @@ import '../providers/settings_provider.dart';
 import '../repositories/stats_repository.dart';
 import '../repositories/workout_session_repository.dart';
 import '../theme/app_theme.dart';
+import '../utils/weight_utils.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -20,29 +21,91 @@ class _StatsScreenState extends State<StatsScreen> {
   String? _selectedExercise;
   List<String> _exerciseNames = [];
   bool _showOverall = true;
+  bool _isLoading = true;
+
+  // Cache for stats data
+  Map<int, int> _workoutFrequency = {};
+  Map<String, double> _exercisePRs = {};
+  int _totalWorkouts = 0;
+  int _workoutsThisWeek = 0;
+  List<Map<String, dynamic>> _selectedExerciseProgression = [];
 
   @override
   void initState() {
     super.initState();
-    _loadExerciseNames();
+    _loadStatsData();
   }
 
-  void _loadExerciseNames() {
-    _exerciseNames = _statsRepo.getAllExerciseNames();
-    if (_exerciseNames.isNotEmpty) {
-      _selectedExercise = _exerciseNames.first;
+  Future<void> _loadStatsData() async {
+    try {
+      final exerciseNames = await _statsRepo.getAllExerciseNames();
+      final workoutFrequency = await _statsRepo.getWorkoutFrequency(8);
+      final exercisePRs = await _statsRepo.getAllExercisePRs();
+      final workoutsThisWeek = await _statsRepo.getWorkoutsThisWeek();
+      final sessions = await _sessionRepo.getSessionsAsync();
+
+      setState(() {
+        _exerciseNames = exerciseNames;
+        _workoutFrequency = workoutFrequency;
+        _exercisePRs = exercisePRs;
+        _totalWorkouts = sessions.length;
+        _workoutsThisWeek = workoutsThisWeek;
+        _isLoading = false;
+
+        if (_exerciseNames.isNotEmpty) {
+          _selectedExercise = _exerciseNames.first;
+          _loadSelectedExerciseProgression();
+        }
+      });
+    } catch (e) {
+      print('Error loading stats data: $e');
+      setState(() {
+        _isLoading = false;
+      });
     }
-    setState(() {});
+  }
+
+  Future<void> _loadSelectedExerciseProgression() async {
+    if (_selectedExercise == null) return;
+
+    try {
+      final progression =
+          await _statsRepo.getExerciseProgression(_selectedExercise!);
+      setState(() {
+        _selectedExerciseProgression = progression;
+      });
+    } catch (e) {
+      print('Error loading progression data: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final accent = context.watch<SettingsProvider>().accentColor;
-    final frequency = _statsRepo.getWorkoutFrequency(8);
-    final totalWorkouts = _sessionRepo.getSessions().length;
-    final workoutsThisWeek = _sessionRepo.workoutsThisWeek;
-    final prs = _statsRepo.getAllExercisePRs();
-    final totalPRs = prs.length;
+    final settings = context.watch<SettingsProvider>();
+    final accent = settings.accentColor;
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: backgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: surfaceColor(context),
+          title: Text(
+            '> STATISTICS',
+            style: GoogleFonts.jetBrainsMono(
+                fontSize: 16, fontWeight: FontWeight.bold, color: accent),
+          ),
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: accent),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: CircularProgressIndicator(color: accent),
+        ),
+      );
+    }
+
+    final totalPRs = _exercisePRs.length;
 
     return Scaffold(
       backgroundColor: backgroundColor(context),
@@ -61,17 +124,18 @@ class _StatsScreenState extends State<StatsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildSummaryCards(totalWorkouts, workoutsThisWeek, totalPRs, accent),
+          _buildSummaryCards(
+              _totalWorkouts, _workoutsThisWeek, totalPRs, accent),
           const SizedBox(height: 24),
           _buildViewToggle(accent),
           const SizedBox(height: 16),
           if (_showOverall)
-            _buildFrequencyChart(frequency, accent)
+            _buildFrequencyChart(_workoutFrequency, accent)
           else
-            _buildProgressionChart(accent),
+            _buildProgressionChart(accent, settings),
           const SizedBox(height: 24),
           if (!_showOverall && _exerciseNames.isNotEmpty)
-            _buildExerciseSelector(accent),
+            _buildExerciseSelector(accent, settings),
         ],
       ),
     );
@@ -165,7 +229,7 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildExerciseSelector(Color accent) {
+  Widget _buildExerciseSelector(Color accent, SettingsProvider settings) {
     return DropdownButtonFormField<String>(
       initialValue: _selectedExercise,
       decoration: const InputDecoration(
@@ -173,10 +237,11 @@ class _StatsScreenState extends State<StatsScreen> {
         border: OutlineInputBorder(),
       ),
       items: _exerciseNames.map((name) {
-        final pr = _statsRepo.getExercisePR(name);
+        final pr = _exercisePRs[name] ?? 0.0;
         return DropdownMenuItem(
           value: name,
-          child: Text('$name (PR: ${pr}kg)',
+          child: Text(
+              '$name (PR: ${WeightUtils.formatWeight(pr, settings.weightUnit)})',
               style: GoogleFonts.jetBrainsMono(fontSize: 12)),
         );
       }).toList(),
@@ -184,6 +249,7 @@ class _StatsScreenState extends State<StatsScreen> {
         setState(() {
           _selectedExercise = value;
         });
+        _loadSelectedExerciseProgression();
       },
     );
   }
@@ -308,7 +374,7 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildProgressionChart(Color accent) {
+  Widget _buildProgressionChart(Color accent, SettingsProvider settings) {
     if (_selectedExercise == null) {
       return Container(
         decoration: BoxDecoration(
@@ -328,7 +394,7 @@ class _StatsScreenState extends State<StatsScreen> {
       );
     }
 
-    final progression = _statsRepo.getExerciseProgression(_selectedExercise!);
+    final progression = _selectedExerciseProgression;
 
     if (progression.isEmpty) {
       return Container(
@@ -397,7 +463,7 @@ class _StatsScreenState extends State<StatsScreen> {
                           final data = progression[spot.x.toInt()];
                           final date = data['date'] as DateTime;
                           return LineTooltipItem(
-                            '${date.day}/${date.month}\n${spot.y}kg',
+                            '${date.day}/${date.month}\n${WeightUtils.formatWeight(spot.y, settings.weightUnit)}',
                             GoogleFonts.jetBrainsMono(fontSize: 11),
                           );
                         }).toList();
@@ -484,7 +550,8 @@ class _StatsScreenState extends State<StatsScreen> {
               children: [
                 _StatItem(
                   label: 'CURRENT PR',
-                  value: '${progression.last['maxWeight']}kg',
+                  value: WeightUtils.formatWeight(
+                      progression.last['maxWeight'], settings.weightUnit),
                   accent: accent,
                 ),
                 _StatItem(
@@ -494,7 +561,7 @@ class _StatsScreenState extends State<StatsScreen> {
                 ),
                 _StatItem(
                   label: 'PROGRESS',
-                  value: _calculateProgress(progression),
+                  value: _calculateProgress(progression, settings),
                   accent: accent,
                   valueColor: _getProgressColor(progression),
                 ),
@@ -506,14 +573,15 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  String _calculateProgress(List<Map<String, dynamic>> progression) {
+  String _calculateProgress(
+      List<Map<String, dynamic>> progression, SettingsProvider settings) {
     if (progression.length < 2) return '-';
     final first = progression.first['maxWeight'] as double;
     final last = progression.last['maxWeight'] as double;
     if (first == 0) return '-';
     final diff = last - first;
     final sign = diff >= 0 ? '+' : '';
-    return '$sign${diff.toStringAsFixed(1)}kg';
+    return '$sign${WeightUtils.formatWeight(diff.abs(), settings.weightUnit)}';
   }
 
   Color _getProgressColor(List<Map<String, dynamic>> progression) {
