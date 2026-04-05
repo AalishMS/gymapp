@@ -28,9 +28,6 @@ class HiveService {
     // Open cache boxes
     await Hive.openBox('plans_cache');
     await Hive.openBox('sessions_cache');
-
-    // Open sync queue box
-    await Hive.openBox('sync_queue');
   }
 
   // Workout Plan operations
