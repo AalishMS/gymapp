@@ -5,6 +5,7 @@ import '../providers/workout_plan_provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/workout_plan.dart';
 import '../models/exercise_template.dart';
+import '../models/set.dart' as gym;
 import '../data/exercise_library.dart';
 import '../theme/app_theme.dart';
 import '../widgets/offline_indicator.dart';
@@ -27,10 +28,28 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
   late TextEditingController _nameController;
   late List<ExerciseTemplate> _exercises;
 
+  ExerciseTemplate _copyExerciseTemplate(ExerciseTemplate exercise) {
+    return ExerciseTemplate(
+      id: exercise.id,
+      name: exercise.name,
+      orderIndex: exercise.orderIndex,
+      setDefaults: exercise.setDefaults
+          .map((setData) => gym.Set(
+                reps: setData.reps,
+                weight: setData.weight,
+                rpe: setData.rpe,
+                note: setData.note,
+              ))
+          .toList(),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.plan.name);
+    _exercises =
+        widget.plan.exercises.map((e) => _copyExerciseTemplate(e)).toList();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final planProvider = context.read<WorkoutPlanProvider>();
@@ -40,7 +59,7 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
 
       setState(() {
         _exercises = freshPlan?.exercises
-                .map((e) => ExerciseTemplate(name: e.name, sets: e.sets))
+                .map((e) => _copyExerciseTemplate(e))
                 .toList() ??
             [];
       });
@@ -230,7 +249,7 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
     );
   }
 
-  void _savePlan() {
+  Future<void> _savePlan() async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -257,7 +276,21 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
       name: _nameController.text.trim(),
       exercises: _exercises,
     );
-    context.read<WorkoutPlanProvider>().updatePlan(widget.planIndex, plan);
+    final provider = context.read<WorkoutPlanProvider>();
+    await provider.updatePlan(widget.planIndex, plan);
+
+    if (!mounted) return;
+    if (provider.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('> ${provider.error}', style: GoogleFonts.jetBrainsMono()),
+          backgroundColor: errorColor(context),
+        ),
+      );
+      return;
+    }
+
     Navigator.pop(context);
   }
 

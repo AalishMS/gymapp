@@ -6,6 +6,7 @@ import '../providers/workout_plan_provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/workout_plan.dart';
 import '../models/exercise_template.dart';
+import '../models/set.dart' as gym;
 import '../theme/app_theme.dart';
 import '../services/sync_service.dart';
 import '../services/sync_queue_service.dart';
@@ -52,7 +53,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final accent = settings.accentColor;
     final bg = backgroundColor(context);
     final border = borderColor(context);
-    final error = errorColor(context);
 
     return Scaffold(
       backgroundColor: bg,
@@ -175,17 +175,31 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 32),
             OutlinedButton(
               onPressed: () async {
-                await SampleDataSeeder.seedSampleData();
-                provider.loadPlans();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('> Sample data loaded!',
-                          style:
-                              GoogleFonts.jetBrainsMono(color: Colors.black)),
-                      backgroundColor: accent,
-                    ),
-                  );
+                try {
+                  await SampleDataSeeder.seedSampleData();
+                  provider.loadPlans();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('> Sample data loaded!',
+                            style:
+                                GoogleFonts.jetBrainsMono(color: Colors.black)),
+                        backgroundColor: accent,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '> Error loading sample data: ${e.toString().replaceFirst('Exception: ', '')}',
+                          style: GoogleFonts.jetBrainsMono(),
+                        ),
+                        backgroundColor: errorColor(context),
+                      ),
+                    );
+                  }
                 }
               },
               style: OutlinedButton.styleFrom(
@@ -418,16 +432,42 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 16),
               _buildActionButton(
                 label: '[COPY] Duplicate plan',
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(ctx);
                   final copyPlan = WorkoutPlan(
                     name: '${plan.name} (Copy)',
                     exercises: plan.exercises
-                        .map(
-                            (e) => ExerciseTemplate(name: e.name, sets: e.sets))
+                        .map((e) => ExerciseTemplate(
+                              name: e.name,
+                              orderIndex: e.orderIndex,
+                              setDefaults: e.setDefaults
+                                  .map((setData) => gym.Set(
+                                        reps: setData.reps,
+                                        weight: setData.weight,
+                                        rpe: setData.rpe,
+                                        note: setData.note,
+                                      ))
+                                  .toList(),
+                            ))
                         .toList(),
                   );
-                  context.read<WorkoutPlanProvider>().addPlan(copyPlan);
+                  final provider = context.read<WorkoutPlanProvider>();
+                  await provider.addPlan(copyPlan);
+                  if (!context.mounted) return;
+
+                  if (provider.error != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '> ${provider.error}',
+                          style: GoogleFonts.jetBrainsMono(),
+                        ),
+                        backgroundColor: errorColor(context),
+                      ),
+                    );
+                    return;
+                  }
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('> Plan copied!',
@@ -457,9 +497,20 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 8),
               _buildActionButton(
                 label: '[DELETE] Remove plan',
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(ctx);
-                  context.read<WorkoutPlanProvider>().deletePlan(index);
+                  final provider = context.read<WorkoutPlanProvider>();
+                  await provider.deletePlan(index);
+                  if (!context.mounted || provider.error == null) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '> ${provider.error}',
+                        style: GoogleFonts.jetBrainsMono(),
+                      ),
+                      backgroundColor: errorColor(context),
+                    ),
+                  );
                 },
                 accent: Colors.red,
               ),

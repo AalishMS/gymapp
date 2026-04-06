@@ -549,18 +549,32 @@ class SettingsScreen extends StatelessWidget {
                   ElevatedButton(
                     onPressed: () async {
                       Navigator.pop(ctx);
-                      await SampleDataSeeder.clearAllData();
-                      await SampleDataSeeder.seedSampleData();
-                      if (context.mounted) {
-                        context.read<WorkoutPlanProvider>().loadPlans();
-                        context.read<WorkoutSessionProvider>().loadSessions();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('> Sample data refreshed!',
-                                style: GoogleFonts.jetBrainsMono()),
-                            backgroundColor: accent,
-                          ),
-                        );
+                      try {
+                        await SampleDataSeeder.clearAllData();
+                        await SampleDataSeeder.seedSampleData();
+                        if (context.mounted) {
+                          context.read<WorkoutPlanProvider>().loadPlans();
+                          context.read<WorkoutSessionProvider>().loadSessions();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('> Sample data refreshed!',
+                                  style: GoogleFonts.jetBrainsMono()),
+                              backgroundColor: accent,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '> Error loading sample data: ${e.toString().replaceFirst('Exception: ', '')}',
+                                style: GoogleFonts.jetBrainsMono(),
+                              ),
+                              backgroundColor: errorColor(context),
+                            ),
+                          );
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(

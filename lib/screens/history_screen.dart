@@ -200,9 +200,25 @@ class HistoryScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 ElevatedButton(
-                                  onPressed: () {
-                                    provider.deleteSession(index);
+                                  onPressed: () async {
+                                    await provider.deleteSession(index);
+                                    if (!ctx.mounted) return;
                                     Navigator.pop(ctx);
+
+                                    if (!context.mounted ||
+                                        provider.error == null) {
+                                      return;
+                                    }
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          '> ${provider.error}',
+                                          style: GoogleFonts.jetBrainsMono(),
+                                        ),
+                                        backgroundColor: errorColor(context),
+                                      ),
+                                    );
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: errorColor(context),

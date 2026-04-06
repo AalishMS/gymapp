@@ -127,8 +127,18 @@ class SyncService {
       'exercises': (payload['exercises'] as List<dynamic>?)
               ?.map((e) => {
                     'name': e['name'],
+                    'exercise_name': e['exercise_name'] ?? e['name'],
                     'sets': e['sets'],
                     'order_index': e['orderIndex'] ?? e['order_index'] ?? 0,
+                    'set_defaults': ((e['setDefaults'] ?? e['set_defaults'])
+                            as List<dynamic>?)
+                        ?.map((s) => {
+                              'reps': s['reps'],
+                              'weight': s['weight'],
+                              'rpe': s['rpe'],
+                              'note': s['note'],
+                            })
+                        .toList(),
                   })
               .toList() ??
           [],
@@ -152,8 +162,18 @@ class SyncService {
       'exercises': (payload['exercises'] as List<dynamic>?)
               ?.map((e) => {
                     'name': e['name'],
+                    'exercise_name': e['exercise_name'] ?? e['name'],
                     'sets': e['sets'],
                     'order_index': e['orderIndex'] ?? e['order_index'] ?? 0,
+                    'set_defaults': ((e['setDefaults'] ?? e['set_defaults'])
+                            as List<dynamic>?)
+                        ?.map((s) => {
+                              'reps': s['reps'],
+                              'weight': s['weight'],
+                              'rpe': s['rpe'],
+                              'note': s['note'],
+                            })
+                        .toList(),
                   })
               .toList() ??
           [],

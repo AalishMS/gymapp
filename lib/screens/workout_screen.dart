@@ -174,9 +174,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               session.exercises,
               weekNumber: _currentWeek,
             );
-        context
-            .read<WorkoutSessionProvider>()
-            .saveWorkout(); // No await - now instant
+        context.read<WorkoutSessionProvider>().saveWorkout();
       }
     } catch (e) {
       // Only show errors for actual problems, don't block UI
@@ -205,11 +203,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   // Show PR celebration as non-blocking banner instead of dialog
   void _showPRBanner(List<PRResult> prs) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+
     final settings = context.read<SettingsProvider>();
     final accent = settings.accentColor;
+    final textPrimary = textPrimaryColor(context);
 
-    ScaffoldMessenger.of(context).showMaterialBanner(
+    messenger.showMaterialBanner(
       MaterialBanner(
+        forceActionsBelow: true,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         backgroundColor: accent.withAlpha(20),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,7 +231,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             ...prs.map((pr) => Text(
                   '${pr.exerciseName}: ${WeightUtils.formatWeight(pr.previousPR, settings.weightUnit)} → ${WeightUtils.formatWeight(pr.newPR, settings.weightUnit)}',
                   style: GoogleFonts.jetBrainsMono(
-                    color: textPrimaryColor(context),
+                    color: textPrimary,
                     fontSize: 12,
                   ),
                 )),
@@ -236,7 +240,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+              if (!mounted) return;
+              messenger.hideCurrentMaterialBanner();
             },
             child: Text(
               'NICE!',
@@ -253,7 +258,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     // Auto-dismiss after 4 seconds
     Timer(const Duration(seconds: 4), () {
       if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+        messenger.hideCurrentMaterialBanner();
       }
     });
   }
@@ -302,10 +307,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       exercises: widget.plan.exercises
           .map((template) => Exercise(
                 name: template.name,
-                sets: List.generate(
-                  template.sets,
-                  (_) => gym.Set(reps: 0, weight: 0),
-                ),
+                sets: template.setDefaults.isNotEmpty
+                    ? template.setDefaults
+                        .map((setData) => gym.Set(
+                              reps: setData.reps,
+                              weight: setData.weight,
+                              rpe: setData.rpe,
+                              note: setData.note,
+                            ))
+                        .toList()
+                    : List.generate(
+                        template.sets,
+                        (_) => gym.Set(reps: 0, weight: 0),
+                      ),
                 note: null,
               ))
           .toList(),
@@ -570,8 +584,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         }
         try {
           final sessionProvider = context.read<WorkoutSessionProvider>();
-          sessionProvider.renameSessionWeek(
-              widget.plan.name, week, newWeek); // No await - now instant
+          await sessionProvider.renameSessionWeek(
+              widget.plan.name, week, newWeek);
+
+          if (!mounted || sessionProvider.error == null) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '> ${sessionProvider.error}',
+                style: GoogleFonts.jetBrainsMono(),
+              ),
+              backgroundColor: errorColor(context),
+            ),
+          );
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -608,8 +633,22 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     if (confirmed && mounted) {
       try {
         final sessionProvider = context.read<WorkoutSessionProvider>();
-        sessionProvider.deleteSessionForPlanAndWeek(
-            widget.plan.name, week); // No await - now instant
+        await sessionProvider.deleteSessionForPlanAndWeek(
+            widget.plan.name, week);
+
+        if (mounted && sessionProvider.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '> ${sessionProvider.error}',
+                style: GoogleFonts.jetBrainsMono(),
+              ),
+              backgroundColor: errorColor(context),
+            ),
+          );
+          return;
+        }
+
         if (mounted) {
           setState(() {
             _weeks.removeAt(index);

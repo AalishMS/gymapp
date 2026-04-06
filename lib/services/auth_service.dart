@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 
 class AuthResult {
   final bool success;
@@ -13,8 +16,12 @@ class AuthResult {
 }
 
 class AuthService {
-  static const String baseUrl = 'https://opengym-api-9ztx.onrender.com';
+  static String get baseUrl => AppConfig.normalizedApiBaseUrl;
   static const String tokenKey = 'auth_token';
+  static bool _isApiWarmedUp = false;
+
+  static const Duration _requestTimeout = Duration(seconds: 45);
+  static const Duration _warmupTimeout = Duration(seconds: 10);
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(
@@ -22,13 +29,32 @@ class AuthService {
     ),
   );
 
+  Future<void> warmupApi() async {
+    if (_isApiWarmedUp) {
+      return;
+    }
+
+    try {
+      final response = await http
+          .get(AppConfig.uriForPath('/health'))
+          .timeout(_warmupTimeout);
+      if (response.statusCode < 500) {
+        _isApiWarmedUp = true;
+      }
+    } catch (_) {
+      // Ignore warmup failures to preserve offline-first behavior.
+    }
+  }
+
   Future<AuthResult> register(String email, String password) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      );
+      final response = await http
+          .post(
+            AppConfig.uriForPath('/auth/register'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email, 'password': password}),
+          )
+          .timeout(_requestTimeout);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return AuthResult.success();
@@ -53,6 +79,11 @@ class AuthService {
           }
         }
       }
+    } on TimeoutException {
+      return AuthResult.error(
+          'Server took too long to respond. Please try again.');
+    } on SocketException {
+      return AuthResult.error('Network error. Check your internet connection.');
     } catch (e) {
       return AuthResult.error('Network error. Check your connection.');
     }
@@ -60,11 +91,14 @@ class AuthService {
 
   Future<bool> login(String email, String password) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      );
+      final response = await http
+          .post(
+            AppConfig.uriForPath('/auth/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email, 'password': password}),
+          )
+          .timeout(_requestTimeout);
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['access_token'] ?? data['token'];

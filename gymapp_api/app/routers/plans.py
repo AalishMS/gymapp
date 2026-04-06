@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List
+import json
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import HTTPAuthorizationCredentials
@@ -15,6 +16,80 @@ from ..models import (
 )
 
 router = APIRouter(prefix="/plans", tags=["plans"])
+
+
+def _build_set_defaults_payload(exercise) -> str:
+    defaults = exercise.set_defaults or []
+    if defaults:
+        normalized_defaults = [
+            {
+                "reps": set_item.reps,
+                "weight": set_item.weight,
+                "rpe": set_item.rpe,
+                "note": set_item.note,
+                "set_order": index,
+            }
+            for index, set_item in enumerate(defaults)
+        ]
+    else:
+        normalized_defaults = [
+            {
+                "reps": 8,
+                "weight": 0.0,
+                "rpe": None,
+                "note": None,
+                "set_order": index,
+            }
+            for index in range(exercise.sets)
+        ]
+
+    return json.dumps(normalized_defaults)
+
+
+def _normalize_set_defaults(raw_set_defaults, sets_count: int):
+    if isinstance(raw_set_defaults, str):
+        try:
+            raw_set_defaults = json.loads(raw_set_defaults)
+        except json.JSONDecodeError:
+            raw_set_defaults = None
+
+    if isinstance(raw_set_defaults, list):
+        normalized = []
+        for index, set_item in enumerate(raw_set_defaults):
+            if isinstance(set_item, dict):
+                set_map = set_item
+            else:
+                set_map = {
+                    "reps": getattr(set_item, "reps", 8),
+                    "weight": getattr(set_item, "weight", 0.0),
+                    "rpe": getattr(set_item, "rpe", None),
+                    "note": getattr(set_item, "note", None),
+                    "set_order": getattr(set_item, "set_order", index),
+                }
+
+            normalized.append(
+                {
+                    "reps": int(set_map.get("reps", 8)),
+                    "weight": float(set_map.get("weight", 0.0)),
+                    "rpe": set_map.get("rpe"),
+                    "note": set_map.get("note"),
+                    "set_order": int(set_map.get("set_order", index)),
+                }
+            )
+
+        if normalized:
+            return normalized
+
+    return [
+        {
+            "reps": 8,
+            "weight": 0.0,
+            "rpe": None,
+            "note": None,
+            "set_order": index,
+        }
+        for index in range(sets_count)
+    ]
 
 
 async def get_plan_with_exercises(plan_id: UUID, user_id: UUID) -> WorkoutPlanResponse:
@@ -36,7 +111,7 @@ async def get_plan_with_exercises(plan_id: UUID, user_id: UUID) -> WorkoutPlanRe
 
         exercise_rows = await conn.fetch(
             """
-            SELECT id, exercise_name, sets, order_index
+            SELECT id, exercise_name, sets, order_index, set_defaults
             FROM plan_exercises
             WHERE plan_id = $1
             ORDER BY order_index
@@ -49,7 +124,8 @@ async def get_plan_with_exercises(plan_id: UUID, user_id: UUID) -> WorkoutPlanRe
                 id=row["id"],
                 exercise_name=row["exercise_name"],
                 sets=row["sets"],
-                order_index=row["order_index"]
+                order_index=row["order_index"],
+                set_defaults=_normalize_set_defaults(row["set_defaults"], row["sets"]),
             )
             for row in exercise_rows
         ]
@@ -83,7 +159,7 @@ async def list_plans(
         for plan_row in plan_rows:
             exercise_rows = await conn.fetch(
                 """
-                SELECT id, exercise_name, sets, order_index
+                SELECT id, exercise_name, sets, order_index, set_defaults
                 FROM plan_exercises
                 WHERE plan_id = $1
                 ORDER BY order_index
@@ -96,7 +172,8 @@ async def list_plans(
                     id=row["id"],
                     exercise_name=row["exercise_name"],
                     sets=row["sets"],
-                    order_index=row["order_index"]
+                    order_index=row["order_index"],
+                    set_defaults=_normalize_set_defaults(row["set_defaults"], row["sets"]),
                 )
                 for row in exercise_rows
             ]
@@ -133,20 +210,22 @@ async def create_plan(
             for idx, exercise in enumerate(plan.exercises):
                 exercise_id = await conn.fetchval(
                     """
-                    INSERT INTO plan_exercises (plan_id, exercise_name, sets, order_index)
-                    VALUES ($1, $2, $3, $4)
+                    INSERT INTO plan_exercises (plan_id, exercise_name, sets, order_index, set_defaults)
+                    VALUES ($1, $2, $3, $4, $5::jsonb)
                     RETURNING id
                     """,
                     plan_id,
                     exercise.exercise_name,
                     exercise.sets,
-                    idx
+                    idx,
+                    _build_set_defaults_payload(exercise),
                 )
                 exercises.append(PlanExerciseResponse(
                     id=exercise_id,
                     exercise_name=exercise.exercise_name,
                     sets=exercise.sets,
-                    order_index=idx
+                    order_index=idx,
+                    set_defaults=_normalize_set_defaults(exercise.set_defaults, exercise.sets),
                 ))
 
             created_at = await conn.fetchval(
@@ -197,13 +276,14 @@ async def update_plan(
                 for idx, exercise in enumerate(plan_update.exercises):
                     await conn.execute(
                         """
-                        INSERT INTO plan_exercises (plan_id, exercise_name, sets, order_index)
-                        VALUES ($1, $2, $3, $4)
+                        INSERT INTO plan_exercises (plan_id, exercise_name, sets, order_index, set_defaults)
+                        VALUES ($1, $2, $3, $4, $5::jsonb)
                         """,
                         plan_id,
                         exercise.exercise_name,
                         exercise.sets,
-                        idx
+                        idx,
+                        _build_set_defaults_payload(exercise),
                     )
 
     return await get_plan_with_exercises(plan_id, current_user.user_id)

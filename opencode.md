@@ -37,7 +37,7 @@ Completed:
   - Error messages persist until user retries or dismisses, maintaining offline-first UX with cached data
   - 401/403 responses automatically call AuthService.logout() and show "Session expired" message
 
-- Production API URL updated in Flutter to Render (`https://opengym-api-9ztx.onrender.com`) instead of local development URL.
+- Production API URL updated in Flutter to Azure (`https://opengym-api.azurewebsites.net`) instead of local development URL.
 - Full offline write flow completed: queued operations persist locally, apply immediately to cache for UX, and sync in chronological order when connectivity returns.
 - Cache fallback behavior improved: repositories now use cached plans/sessions if API calls fail after login.
 
@@ -55,12 +55,12 @@ Completed:
 
 ## Deployment Notes
 
-- Backend is deployed on Render.
+- Backend is deployed on Azure App Service.
 - Database is Supabase PostgreSQL.
 
 ## Tech Stack
 
 - Flutter app: Provider, Hive (cache), flutter_secure_storage, connectivity_plus
-- Backend: FastAPI (Python), hosted on Render
+- Backend: FastAPI (Python), hosted on Azure App Service
 - Database: Supabase (PostgreSQL)
 - Auth: Custom JWT in FastAPI

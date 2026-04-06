@@ -191,7 +191,7 @@ ThemeData buildTheme(Color accent, Brightness brightness) {
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.black,
+        backgroundColor: surface,
         foregroundColor: accent,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -218,7 +218,7 @@ ThemeData buildTheme(Color accent, Brightness brightness) {
       ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: Colors.black,
+      backgroundColor: surface,
       foregroundColor: accent,
       elevation: 0,
       shape: RoundedRectangleBorder(

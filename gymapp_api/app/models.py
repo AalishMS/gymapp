@@ -5,10 +5,19 @@ from pydantic import BaseModel
 
 
 # Plan Exercise schemas
+class PlanSetDefault(BaseModel):
+    reps: int = 8
+    weight: float = 0.0
+    rpe: Optional[int] = None
+    note: Optional[str] = None
+    set_order: int = 0
+
+
 class PlanExerciseBase(BaseModel):
     exercise_name: str
     sets: int = 3
     order_index: int = 0
+    set_defaults: List[PlanSetDefault] = []
 
 
 class PlanExerciseCreate(PlanExerciseBase):

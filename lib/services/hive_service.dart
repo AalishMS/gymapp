@@ -373,6 +373,22 @@ class HiveService {
             storedExercise.orderIndex != targetExercise.orderIndex) {
           return false;
         }
+
+        if (storedExercise.setDefaults.length !=
+            targetExercise.setDefaults.length) {
+          return false;
+        }
+
+        for (int j = 0; j < storedExercise.setDefaults.length; j++) {
+          final storedSet = storedExercise.setDefaults[j];
+          final targetSet = targetExercise.setDefaults[j];
+          if (storedSet.reps != targetSet.reps ||
+              storedSet.weight != targetSet.weight ||
+              storedSet.rpe != targetSet.rpe ||
+              storedSet.note != targetSet.note) {
+            return false;
+          }
+        }
       }
 
       return true;

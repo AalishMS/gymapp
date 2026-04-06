@@ -19,7 +19,10 @@ class ExerciseTemplateAdapter extends TypeAdapter<ExerciseTemplate> {
     return ExerciseTemplate(
       id: fields[0] as String?,
       name: fields[1] as String,
-      sets: fields[2] as int,
+      sets: fields[2] as int?,
+      setDefaultsJson: (fields[4] as List?)
+          ?.map((dynamic e) => (e as Map).cast<String, dynamic>())
+          .toList(),
       orderIndex: fields[3] as int,
     );
   }
@@ -27,7 +30,7 @@ class ExerciseTemplateAdapter extends TypeAdapter<ExerciseTemplate> {
   @override
   void write(BinaryWriter writer, ExerciseTemplate obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -35,7 +38,9 @@ class ExerciseTemplateAdapter extends TypeAdapter<ExerciseTemplate> {
       ..writeByte(2)
       ..write(obj.sets)
       ..writeByte(3)
-      ..write(obj.orderIndex);
+      ..write(obj.orderIndex)
+      ..writeByte(4)
+      ..write(obj.setDefaultsJson);
   }
 
   @override

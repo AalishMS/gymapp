@@ -1,18 +1,23 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
+import '../config/app_config.dart';
 
 class ApiService {
   final AuthService _authService = AuthService();
+  static const Duration _requestTimeout = Duration(seconds: 45);
 
   Future<http.Response> get(String path) async {
     try {
       final token = await _authService.getToken();
-      final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}$path'),
-        headers: _buildHeaders(token),
-      );
+      final response = await http
+          .get(
+            AppConfig.uriForPath(path),
+            headers: _buildHeaders(token),
+          )
+          .timeout(_requestTimeout);
       await _handleErrorResponse(response);
       return response;
     } catch (e) {
@@ -23,11 +28,13 @@ class ApiService {
   Future<http.Response> post(String path, Map<String, dynamic> body) async {
     try {
       final token = await _authService.getToken();
-      final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}$path'),
-        headers: _buildHeaders(token),
-        body: jsonEncode(body),
-      );
+      final response = await http
+          .post(
+            AppConfig.uriForPath(path),
+            headers: _buildHeaders(token),
+            body: jsonEncode(body),
+          )
+          .timeout(_requestTimeout);
       await _handleErrorResponse(response);
       return response;
     } catch (e) {
@@ -38,11 +45,13 @@ class ApiService {
   Future<http.Response> put(String path, Map<String, dynamic> body) async {
     try {
       final token = await _authService.getToken();
-      final response = await http.put(
-        Uri.parse('${AuthService.baseUrl}$path'),
-        headers: _buildHeaders(token),
-        body: jsonEncode(body),
-      );
+      final response = await http
+          .put(
+            AppConfig.uriForPath(path),
+            headers: _buildHeaders(token),
+            body: jsonEncode(body),
+          )
+          .timeout(_requestTimeout);
       await _handleErrorResponse(response);
       return response;
     } catch (e) {
@@ -53,10 +62,12 @@ class ApiService {
   Future<http.Response> delete(String path) async {
     try {
       final token = await _authService.getToken();
-      final response = await http.delete(
-        Uri.parse('${AuthService.baseUrl}$path'),
-        headers: _buildHeaders(token),
-      );
+      final response = await http
+          .delete(
+            AppConfig.uriForPath(path),
+            headers: _buildHeaders(token),
+          )
+          .timeout(_requestTimeout);
       await _handleErrorResponse(response);
       return response;
     } catch (e) {
@@ -85,6 +96,10 @@ class ApiService {
   }
 
   Exception _parseException(dynamic error) {
+    if (error is TimeoutException) {
+      return Exception('Server took too long to respond. Please try again.');
+    }
+
     if (error is SocketException ||
         error.toString().contains('connection') ||
         error.toString().contains('timeout') ||

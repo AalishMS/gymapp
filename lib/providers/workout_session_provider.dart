@@ -60,7 +60,7 @@ class WorkoutSessionProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void saveWorkout() {
+  Future<void> saveWorkout() async {
     if (_currentSession == null) return;
 
     try {
@@ -75,9 +75,9 @@ class WorkoutSessionProvider with ChangeNotifier {
       );
 
       if (existingIndex != -1) {
-        _repository.updateSession(existingIndex, _currentSession!);
+        await _repository.updateSession(existingIndex, _currentSession!);
       } else {
-        _repository.addSession(_currentSession!);
+        await _repository.addSession(_currentSession!);
       }
 
       // Since repository uses optimistic updates, refresh our provider's cache
@@ -89,10 +89,10 @@ class WorkoutSessionProvider with ChangeNotifier {
     }
   }
 
-  void deleteSession(int index) {
+  Future<void> deleteSession(int index) async {
     try {
       _error = null;
-      _repository.deleteSession(index); // No await - optimistic update
+      await _repository.deleteSession(index);
       _sessions = _repository.cachedSessions;
       notifyListeners();
     } catch (e) {
@@ -101,10 +101,10 @@ class WorkoutSessionProvider with ChangeNotifier {
     }
   }
 
-  void updateSession(int index, WorkoutSession session) {
+  Future<void> updateSession(int index, WorkoutSession session) async {
     try {
       _error = null;
-      _repository.updateSession(index, session); // No await - optimistic update
+      await _repository.updateSession(index, session);
       _sessions = _repository.cachedSessions;
       notifyListeners();
     } catch (e) {
@@ -113,7 +113,7 @@ class WorkoutSessionProvider with ChangeNotifier {
     }
   }
 
-  void updateSessionObject(WorkoutSession session) {
+  Future<void> updateSessionObject(WorkoutSession session) async {
     try {
       _error = null;
 
@@ -124,8 +124,7 @@ class WorkoutSessionProvider with ChangeNotifier {
           s.date.isAtSameMomentAs(session.date));
 
       if (index != -1) {
-        _repository.updateSession(
-            index, session); // No await - optimistic update
+        await _repository.updateSession(index, session);
         _sessions = _repository.cachedSessions;
         notifyListeners();
       }
@@ -147,11 +146,11 @@ class WorkoutSessionProvider with ChangeNotifier {
     return _repository.getLastSetForExercise(exerciseName);
   }
 
-  void renameSessionWeek(String planName, int oldWeek, int newWeek) {
+  Future<void> renameSessionWeek(
+      String planName, int oldWeek, int newWeek) async {
     try {
       _error = null;
-      _repository.renameSessionWeek(
-          planName, oldWeek, newWeek); // No await - optimistic update
+      await _repository.renameSessionWeek(planName, oldWeek, newWeek);
       _sessions = _repository.cachedSessions;
       notifyListeners();
     } catch (e) {
@@ -160,11 +159,11 @@ class WorkoutSessionProvider with ChangeNotifier {
     }
   }
 
-  void deleteSessionForPlanAndWeek(String planName, int weekNumber) {
+  Future<void> deleteSessionForPlanAndWeek(
+      String planName, int weekNumber) async {
     try {
       _error = null;
-      _repository.deleteSessionForPlanAndWeek(
-          planName, weekNumber); // No await - optimistic update
+      await _repository.deleteSessionForPlanAndWeek(planName, weekNumber);
       _sessions = _repository.cachedSessions;
       notifyListeners();
     } catch (e) {

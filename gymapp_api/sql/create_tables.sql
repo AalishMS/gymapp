@@ -23,8 +23,12 @@ CREATE TABLE IF NOT EXISTS plan_exercises (
     plan_id UUID NOT NULL REFERENCES workout_plans(id) ON DELETE CASCADE,
     exercise_name TEXT NOT NULL,
     sets INT NOT NULL DEFAULT 3,
+    set_defaults JSONB,
     order_index INT NOT NULL DEFAULT 0
 );
+
+ALTER TABLE plan_exercises
+    ADD COLUMN IF NOT EXISTS set_defaults JSONB;
 
 -- workout_sessions: actual workout sessions
 CREATE TABLE IF NOT EXISTS workout_sessions (

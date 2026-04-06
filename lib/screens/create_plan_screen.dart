@@ -5,6 +5,7 @@ import '../providers/workout_plan_provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/workout_plan.dart';
 import '../models/exercise_template.dart';
+import '../models/set.dart' as gym;
 import '../data/exercise_library.dart';
 import '../theme/app_theme.dart';
 import '../widgets/offline_indicator.dart';
@@ -276,7 +277,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
     });
   }
 
-  void _savePlan() {
+  Future<void> _savePlan() async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -302,7 +303,12 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
     final exercises = _exercises
         .map((e) => ExerciseTemplate(
               name: e.name,
-              sets: e.sets.length,
+              setDefaults: e.sets
+                  .map((setData) => gym.Set(
+                        reps: setData.reps,
+                        weight: setData.weight,
+                      ))
+                  .toList(),
             ))
         .toList();
 
@@ -310,7 +316,21 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
       name: _nameController.text.trim(),
       exercises: exercises,
     );
-    context.read<WorkoutPlanProvider>().addPlan(plan);
+    final provider = context.read<WorkoutPlanProvider>();
+    await provider.addPlan(plan);
+
+    if (!mounted) return;
+    if (provider.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('> ${provider.error}', style: GoogleFonts.jetBrainsMono()),
+          backgroundColor: errorColor(context),
+        ),
+      );
+      return;
+    }
+
     Navigator.pop(context);
   }
 

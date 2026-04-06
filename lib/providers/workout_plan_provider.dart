@@ -33,10 +33,10 @@ class WorkoutPlanProvider with ChangeNotifier {
     }
   }
 
-  void addPlan(WorkoutPlan plan) {
+  Future<void> addPlan(WorkoutPlan plan) async {
     try {
       _error = null;
-      _repository.addPlan(plan); // No await - optimistic update
+      await _repository.addPlan(plan);
       _plans = _repository.cachedPlans;
       notifyListeners();
     } catch (e) {
@@ -45,10 +45,10 @@ class WorkoutPlanProvider with ChangeNotifier {
     }
   }
 
-  void updatePlan(int index, WorkoutPlan plan) {
+  Future<void> updatePlan(int index, WorkoutPlan plan) async {
     try {
       _error = null;
-      _repository.updatePlan(index, plan); // No await - optimistic update
+      await _repository.updatePlan(index, plan);
       _plans = _repository.cachedPlans;
       notifyListeners();
     } catch (e) {
@@ -57,10 +57,10 @@ class WorkoutPlanProvider with ChangeNotifier {
     }
   }
 
-  void deletePlan(int index) {
+  Future<void> deletePlan(int index) async {
     try {
       _error = null;
-      _repository.deletePlan(index); // No await - optimistic update
+      await _repository.deletePlan(index);
       _plans = _repository.cachedPlans;
       notifyListeners();
     } catch (e) {

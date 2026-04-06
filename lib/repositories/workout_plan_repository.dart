@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../models/workout_plan.dart';
 import '../models/exercise_template.dart';
+import '../models/set.dart' as gym;
 import '../services/api_service.dart';
 import '../services/connectivity_service.dart';
 import '../services/cache_service.dart';
@@ -139,8 +140,17 @@ class WorkoutPlanRepository {
           'exercises': plan.exercises
               .map((e) => {
                     'name': e.name,
+                    'exercise_name': e.name,
                     'sets': e.sets,
                     'order_index': e.orderIndex,
+                    'set_defaults': e.setDefaults
+                        .map((s) => {
+                              'reps': s.reps,
+                              'weight': s.weight,
+                              'rpe': s.rpe,
+                              'note': s.note,
+                            })
+                        .toList(),
                   })
               .toList(),
         };
@@ -159,13 +169,23 @@ class WorkoutPlanRepository {
 
   WorkoutPlan _planFromJson(Map<String, dynamic> json) {
     return WorkoutPlan(
-      id: json['id'],
-      name: json['name'],
-      exercises: (json['exercises'] as List)
+      id: json['id']?.toString(),
+      name: json['name'] as String,
+      exercises: (json['exercises'] as List<dynamic>? ?? const [])
           .map((e) => ExerciseTemplate(
-                name: e['name'],
-                sets: e['sets'],
-                orderIndex: e['order_index'],
+                id: e['id']?.toString(),
+                name: (e['name'] ?? e['exercise_name']) as String,
+                sets: e['sets'] as int?,
+                orderIndex: e['order_index'] as int? ?? 0,
+                setDefaults: (e['set_defaults'] as List<dynamic>?)
+                    ?.map((s) => gym.Set(
+                          id: s['id']?.toString(),
+                          reps: s['reps'] as int,
+                          weight: (s['weight'] as num).toDouble(),
+                          rpe: s['rpe'] as int?,
+                          note: s['note'] as String?,
+                        ))
+                    .toList(),
               ))
           .toList(),
     );
