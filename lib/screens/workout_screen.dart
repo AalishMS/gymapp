@@ -112,25 +112,77 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   Future<void> _onWeekChanged(int newIndex) async {
-    _autoSave(); // Trigger debounced save, don't await
-    if (mounted) {
-      setState(() {
-        _currentWeekIndex = newIndex;
-      });
-    }
+    final previousWeek = _currentWeek;
+    await _saveWeek(previousWeek);
+    if (!mounted) return;
+    setState(() {
+      _currentWeekIndex = newIndex;
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadSessionForCurrentWeek();
     });
   }
 
   Future<void> _addNewWeek() async {
-    _autoSave(); // Trigger debounced save, don't await
+    final previousWeek = _currentWeek;
+    await _saveWeek(previousWeek);
     final lastWeek = _weeks.last;
-    if (mounted) {
-      setState(() {
-        _weeks.add(lastWeek + 1);
-        _currentWeekIndex = _weeks.length - 1;
+    if (!mounted) return;
+    setState(() {
+      _weeks.add(lastWeek + 1);
+      _currentWeekIndex = _weeks.length - 1;
+    });
+  }
+
+  Future<void> _saveWeek(int week) async {
+    _autosaveDebounceTimer?.cancel();
+    _hasPendingSave = false;
+
+    final session = _weekSessions[week];
+    if (session == null) {
+      return;
+    }
+
+    final hasSets = session.exercises.any((e) => e.sets.isNotEmpty);
+    if (!hasSets) {
+      return;
+    }
+
+    try {
+      PRTrackingService.checkForNewPRs(session.exercises).then((prs) {
+        if (prs.isNotEmpty && mounted) {
+          _showPRBanner(prs);
+        }
       });
+
+      final sessionProvider = context.read<WorkoutSessionProvider>();
+      sessionProvider.startWorkout(
+        session.planName,
+        session.exercises,
+        weekNumber: week,
+      );
+      await sessionProvider.saveWorkout();
+    } catch (e) {
+      if (mounted) {
+        final settings = context.read<SettingsProvider>();
+        final accent = settings.accentColor;
+        final error = errorColor(context);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '> Background save failed: ${e.toString().replaceFirst('Exception: ', '')}',
+              style: GoogleFonts.jetBrainsMono(color: Colors.white),
+            ),
+            backgroundColor: error,
+            action: SnackBarAction(
+              label: 'RETRY',
+              textColor: accent,
+              onPressed: () => _saveWeek(week),
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -147,58 +199,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   // Immediate save for when user explicitly saves (e.g., finish workout button)
   Future<void> _performSaveImmediate() async {
-    _autosaveDebounceTimer?.cancel();
-    _hasPendingSave = false;
-    await _performSave();
+    await _saveWeek(_currentWeek);
   }
 
   // Background save operation - never blocks UI
   Future<void> _performSave() async {
-    _hasPendingSave = false;
-
-    try {
-      final session = _getOrCreateSession();
-      final hasSets = session.exercises.any((e) => e.sets.isNotEmpty);
-
-      if (hasSets) {
-        // Background PR check
-        PRTrackingService.checkForNewPRs(session.exercises).then((prs) {
-          if (prs.isNotEmpty && mounted) {
-            _showPRBanner(prs);
-          }
-        });
-
-        // Save workout - this now uses optimistic updates, so it's instant
-        context.read<WorkoutSessionProvider>().startWorkout(
-              session.planName,
-              session.exercises,
-              weekNumber: _currentWeek,
-            );
-        context.read<WorkoutSessionProvider>().saveWorkout();
-      }
-    } catch (e) {
-      // Only show errors for actual problems, don't block UI
-      if (mounted) {
-        final settings = context.read<SettingsProvider>();
-        final accent = settings.accentColor;
-        final error = errorColor(context);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '> Background save failed: ${e.toString().replaceFirst('Exception: ', '')}',
-              style: GoogleFonts.jetBrainsMono(color: Colors.white),
-            ),
-            backgroundColor: error,
-            action: SnackBarAction(
-              label: 'RETRY',
-              textColor: accent,
-              onPressed: () => _performSave(),
-            ),
-          ),
-        );
-      }
-    }
+    await _saveWeek(_currentWeek);
   }
 
   // Show PR celebration as non-blocking banner instead of dialog
@@ -273,13 +279,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final prevWeek = _currentWeek - 1;
     if (prevWeek >= 1) {
       final sessionProvider = context.read<WorkoutSessionProvider>();
-      final prevSession = sessionProvider.getSessionForPlanAndWeek(
-        widget.plan.name,
-        prevWeek,
-      );
+      final prevSession = _weekSessions[prevWeek] ??
+          sessionProvider.getSessionForPlanAndWeek(
+            widget.plan.name,
+            prevWeek,
+          );
       if (prevSession != null &&
           prevSession.exercises.any((e) => e.sets.isNotEmpty)) {
-        return WorkoutSession(
+        final session = WorkoutSession(
           date: DateTime.now(),
           planName: widget.plan.name,
           exercises: prevSession.exercises
@@ -298,10 +305,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               .toList(),
           weekNumber: _currentWeek,
         );
+        _weekSessions[_currentWeek] = session;
+        return session;
       }
     }
 
-    return WorkoutSession(
+    final session = WorkoutSession(
       date: DateTime.now(),
       planName: widget.plan.name,
       exercises: widget.plan.exercises
@@ -325,6 +334,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           .toList(),
       weekNumber: _currentWeek,
     );
+    _weekSessions[_currentWeek] = session;
+    return session;
   }
 
   void _updateSession(WorkoutSession session) {
@@ -337,10 +348,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   void _addEmptyExercise() {
     WorkoutDialogs.showAddExerciseDialog(
       context,
-      onAdd: (name) {
+      onAdd: (name, sets) {
         final session = _getOrCreateSession();
         final updatedExercises = List<Exercise>.from(session.exercises);
-        updatedExercises.add(Exercise(name: name, sets: [], note: null));
+        updatedExercises.add(Exercise(name: name, sets: sets, note: null));
         _updateSession(session.copyWith(exercises: updatedExercises));
         _autoSave();
       },
@@ -369,7 +380,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   void _addSet(int exerciseIndex) {
     final session = _getOrCreateSession();
     final exercise = session.exercises[exerciseIndex];
-    final lastSet = _getLastSetForExerciseInPlan(exercise.name);
+    final lastSet = exercise.sets.isNotEmpty
+        ? exercise.sets.last
+        : _getLastSetForExerciseInPlan(exercise.name);
 
     WorkoutDialogs.showAddSetDialog(
       context,
@@ -954,11 +967,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     child: Center(
                       child: InkWell(
                         onTap: () {
-                          if (mounted) {
-                            setState(() {
-                              _currentWeekIndex = index;
-                            });
-                          }
+                          _onWeekChanged(index);
                         },
                         onLongPress: () =>
                             _showWeekOptionsMenu(context, index, week),
