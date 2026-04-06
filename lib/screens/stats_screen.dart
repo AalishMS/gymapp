@@ -8,6 +8,7 @@ import '../repositories/workout_session_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/weight_utils.dart';
 import '../widgets/offline_indicator.dart';
+import '../services/app_logger.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -59,7 +60,7 @@ class _StatsScreenState extends State<StatsScreen> {
         }
       });
     } catch (e) {
-      print('Error loading stats data: $e');
+      AppLogger.e('Error loading stats data', error: e);
       setState(() {
         _isLoading = false;
       });
@@ -76,7 +77,7 @@ class _StatsScreenState extends State<StatsScreen> {
         _selectedExerciseProgression = progression;
       });
     } catch (e) {
-      print('Error loading progression data: $e');
+      AppLogger.e('Error loading progression data', error: e);
     }
   }
 

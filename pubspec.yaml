@@ -19,6 +19,7 @@ dependencies:
   flutter_secure_storage: ^9.0.0
   http: ^1.2.0
   connectivity_plus: ^6.0.0
+  logger: ^2.4.0
 
 dev_dependencies:
   flutter_test:

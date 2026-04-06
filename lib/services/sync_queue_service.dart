@@ -2,6 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/queued_operation.dart';
 import '../models/workout_plan.dart';
 import '../models/workout_session.dart';
+import 'app_logger.dart';
 
 class SyncQueueService {
   static const String _queueBoxName = 'sync_queue';
@@ -62,6 +63,68 @@ class SyncQueueService {
     }
   }
 
+  Future<void> removeQueuedPlanMutations(WorkoutPlan plan) async {
+    final keysToDelete = <dynamic>[];
+
+    for (final entry in _queueBox.toMap().entries) {
+      final operation = entry.value;
+      if (operation.entity != 'plan') {
+        continue;
+      }
+
+      if (operation.action == 'delete') {
+        continue;
+      }
+
+      if (_matchesPlanPayload(operation.payload, plan)) {
+        keysToDelete.add(entry.key);
+      }
+    }
+
+    for (final key in keysToDelete) {
+      await _queueBox.delete(key);
+    }
+  }
+
+  Future<void> removeQueuedSessionMutations(WorkoutSession session) async {
+    final keysToDelete = <dynamic>[];
+
+    for (final entry in _queueBox.toMap().entries) {
+      final operation = entry.value;
+      if (operation.entity != 'session') {
+        continue;
+      }
+
+      if (operation.action == 'delete') {
+        continue;
+      }
+
+      if (_matchesSessionPayload(operation.payload, session)) {
+        keysToDelete.add(entry.key);
+      }
+    }
+
+    for (final key in keysToDelete) {
+      await _queueBox.delete(key);
+    }
+  }
+
+  Set<String> getPendingDeleteIds(String entity) {
+    final pendingDeletes = <String>{};
+    for (final operation in _queueBox.values) {
+      if (operation.entity != entity || operation.action != 'delete') {
+        continue;
+      }
+
+      final id = operation.payload['id'];
+      if (id is String && id.isNotEmpty) {
+        pendingDeletes.add(id);
+      }
+    }
+
+    return pendingDeletes;
+  }
+
   Future<void> clearQueue() async {
     await _queueBox.clear();
   }
@@ -75,15 +138,15 @@ class SyncQueueService {
   // Debug methods
   void printQueueStatus() {
     final queue = getQueue();
-    print('📋 Sync Queue Status: ${queue.length} operations');
+    AppLogger.d('Sync queue status: ${queue.length} operations');
     if (queue.isEmpty) {
-      print('   Queue is empty');
+      AppLogger.d('Sync queue is empty');
     } else {
       for (int i = 0; i < queue.length; i++) {
         final op = queue[i];
         final timeAgo = DateTime.now().difference(op.timestamp).inMinutes;
-        print(
-            '   ${i + 1}. ${op.entity}_${op.action} (${timeAgo}min ago) - ${op.id}');
+        AppLogger.d(
+            '${i + 1}. ${op.entity}_${op.action} (${timeAgo}m ago) - ${op.id}');
       }
     }
   }
@@ -113,6 +176,9 @@ class SyncQueueService {
   }
 
   Future<void> addPlanDelete(String planId) async {
+    if (_hasQueuedDelete('plan', planId)) {
+      return;
+    }
     await addToQueue('delete', 'plan', {'id': planId});
   }
 
@@ -125,6 +191,51 @@ class SyncQueueService {
   }
 
   Future<void> addSessionDelete(String sessionId) async {
+    if (_hasQueuedDelete('session', sessionId)) {
+      return;
+    }
     await addToQueue('delete', 'session', {'id': sessionId});
+  }
+
+  bool _hasQueuedDelete(String entity, String id) {
+    return _queueBox.values.any((operation) =>
+        operation.entity == entity &&
+        operation.action == 'delete' &&
+        operation.payload['id'] == id);
+  }
+
+  bool _matchesPlanPayload(Map<String, dynamic> payload, WorkoutPlan plan) {
+    final payloadId = payload['id'];
+    if (plan.id != null && payloadId == plan.id) {
+      return true;
+    }
+
+    final payloadName = payload['name'];
+    return plan.id == null && payloadName == plan.name;
+  }
+
+  bool _matchesSessionPayload(
+      Map<String, dynamic> payload, WorkoutSession session) {
+    final payloadId = payload['id'];
+    if (session.id != null && payloadId == session.id) {
+      return true;
+    }
+
+    if (session.id != null) {
+      return false;
+    }
+
+    final payloadPlanName = payload['planName'] ?? payload['plan_name'];
+    final payloadWeekNumber = payload['weekNumber'] ?? payload['week_number'];
+    final payloadDate = payload['date'];
+
+    if (payloadPlanName != session.planName ||
+        payloadWeekNumber != session.weekNumber ||
+        payloadDate is! String) {
+      return false;
+    }
+
+    final parsedDate = DateTime.tryParse(payloadDate);
+    return parsedDate != null && parsedDate.isAtSameMomentAs(session.date);
   }
 }

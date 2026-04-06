@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/sync_service.dart';
+import 'app_logger.dart';
 
 class ConnectivityService {
   static final ConnectivityService _instance = ConnectivityService._internal();
@@ -43,7 +44,7 @@ class ConnectivityService {
     try {
       await _syncService.processQueue();
     } catch (e) {
-      print('Sync failed when connectivity restored: $e');
+      AppLogger.e('Sync failed when connectivity was restored', error: e);
     }
   }
 

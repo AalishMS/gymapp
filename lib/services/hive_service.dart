@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/workout_plan.dart';
 import '../models/workout_session.dart';
@@ -5,95 +7,331 @@ import '../models/exercise_template.dart';
 import '../models/exercise.dart';
 import '../models/set.dart';
 import '../models/queued_operation.dart';
+import 'app_logger.dart';
+
+class HiveInitResult {
+  final bool requiresRecovery;
+  final List<String> failedBoxes;
+  final bool backupAvailable;
+  final String message;
+
+  const HiveInitResult._({
+    required this.requiresRecovery,
+    required this.failedBoxes,
+    required this.backupAvailable,
+    required this.message,
+  });
+
+  const HiveInitResult.success()
+      : this._(
+          requiresRecovery: false,
+          failedBoxes: const [],
+          backupAvailable: false,
+          message: 'Local storage initialized',
+        );
+
+  const HiveInitResult.recoveryRequired({
+    required List<String> failedBoxes,
+    required bool backupAvailable,
+    required String message,
+  }) : this._(
+          requiresRecovery: true,
+          failedBoxes: failedBoxes,
+          backupAvailable: backupAvailable,
+          message: message,
+        );
+}
+
+class _HiveBackupSnapshot {
+  final List<String> plansJson;
+  final List<String> sessionsJson;
+  final List<String>? plansCacheJson;
+  final List<String>? sessionsCacheJson;
+  final List<String> queueJson;
+
+  const _HiveBackupSnapshot({
+    required this.plansJson,
+    required this.sessionsJson,
+    required this.plansCacheJson,
+    required this.sessionsCacheJson,
+    required this.queueJson,
+  });
+
+  bool get hasAnyData {
+    return plansJson.isNotEmpty ||
+        sessionsJson.isNotEmpty ||
+        (plansCacheJson?.isNotEmpty ?? false) ||
+        (sessionsCacheJson?.isNotEmpty ?? false) ||
+        queueJson.isNotEmpty;
+  }
+}
 
 class HiveService {
   static const String plansBox = 'workout_plans';
   static const String sessionsBox = 'workout_sessions';
+  static const String plansCacheBox = 'plans_cache';
+  static const String sessionsCacheBox = 'sessions_cache';
+  static const String syncQueueBox = 'sync_queue';
 
-  static Future<void> init() async {
+  static const List<String> _managedBoxes = [
+    plansBox,
+    sessionsBox,
+    plansCacheBox,
+    sessionsCacheBox,
+    syncQueueBox,
+  ];
+
+  static _HiveBackupSnapshot? _lastBackupSnapshot;
+  static List<String> _failedBoxes = <String>[];
+
+  static List<String> get failedBoxes => List.unmodifiable(_failedBoxes);
+
+  static void _registerAdapters() {
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(SetAdapter());
+    }
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(ExerciseAdapter());
+    }
+    if (!Hive.isAdapterRegistered(2)) {
+      Hive.registerAdapter(ExerciseTemplateAdapter());
+    }
+    if (!Hive.isAdapterRegistered(3)) {
+      Hive.registerAdapter(WorkoutPlanAdapter());
+    }
+    if (!Hive.isAdapterRegistered(4)) {
+      Hive.registerAdapter(WorkoutSessionAdapter());
+    }
+    if (!Hive.isAdapterRegistered(5)) {
+      Hive.registerAdapter(QueuedOperationAdapter());
+    }
+  }
+
+  static Future<HiveInitResult> init() async {
     try {
       await Hive.initFlutter();
 
-      // Register adapters
-      Hive.registerAdapter(SetAdapter());
-      Hive.registerAdapter(ExerciseAdapter());
-      Hive.registerAdapter(ExerciseTemplateAdapter());
-      Hive.registerAdapter(WorkoutPlanAdapter());
-      Hive.registerAdapter(WorkoutSessionAdapter());
-      Hive.registerAdapter(QueuedOperationAdapter());
+      _registerAdapters();
 
-      // Try to open boxes - if corrupted, reset database
-      try {
-        await Hive.openBox<WorkoutPlan>(plansBox);
-        await Hive.openBox<WorkoutSession>(sessionsBox);
-        await Hive.openBox('plans_cache');
-        await Hive.openBox('sessions_cache');
-      } catch (e) {
-        print('Database corruption detected: $e');
-        print('Clearing corrupted database...');
-        await _handleDatabaseCorruption();
-
-        // Try again after reset
-        await Hive.openBox<WorkoutPlan>(plansBox);
-        await Hive.openBox<WorkoutSession>(sessionsBox);
-        await Hive.openBox('plans_cache');
-        await Hive.openBox('sessions_cache');
-        print('Database reset successful');
+      final failed = await _openAllManagedBoxes();
+      if (failed.isEmpty) {
+        _failedBoxes = <String>[];
+        return const HiveInitResult.success();
       }
+
+      _failedBoxes = failed;
+      _lastBackupSnapshot = _createBackupSnapshot();
+
+      AppLogger.e('Hive corruption detected in boxes: ${failed.join(', ')}');
+
+      return HiveInitResult.recoveryRequired(
+        failedBoxes: failed,
+        backupAvailable: _lastBackupSnapshot?.hasAnyData ?? false,
+        message:
+            'Some local storage files are corrupted. You can recover affected data or reset local storage after confirmation.',
+      );
     } catch (e) {
-      print('Critical error initializing Hive: $e');
+      AppLogger.e('Critical error initializing Hive', error: e);
       rethrow;
     }
   }
 
-  static Future<void> _handleDatabaseCorruption() async {
+  static Future<void> recoverCorruptedBoxes() async {
+    if (_failedBoxes.isEmpty) {
+      return;
+    }
+
+    await _recover(
+      targetBoxes: _failedBoxes,
+      restoreBackup: false,
+    );
+
+    _failedBoxes = <String>[];
+  }
+
+  static Future<void> resetDatabase({bool restoreFromBackup = false}) async {
+    await _recover(
+      targetBoxes: _managedBoxes,
+      restoreBackup: restoreFromBackup,
+    );
+
+    _failedBoxes = <String>[];
+  }
+
+  static Future<void> _recover({
+    required List<String> targetBoxes,
+    required bool restoreBackup,
+  }) async {
     try {
-      // Close all open boxes first
-      try {
-        await Hive.close();
-      } catch (e) {
-        print('Warning: Error closing boxes: $e');
-      }
-
-      // Try to delete individual boxes by name
-      final boxNames = [
-        'workout_plans',
-        'workout_sessions',
-        'plans_cache',
-        'sessions_cache'
-      ];
-      for (final boxName in boxNames) {
-        try {
-          if (Hive.isBoxOpen(boxName)) {
-            await Hive.box(boxName).deleteFromDisk();
-            print('Deleted box: $boxName');
-          }
-        } catch (e) {
-          print('Could not delete box $boxName: $e');
-        }
-      }
-
-      // Reinitialize Hive
-      await Hive.initFlutter();
-
-      // Re-register adapters
-      Hive.registerAdapter(SetAdapter());
-      Hive.registerAdapter(ExerciseAdapter());
-      Hive.registerAdapter(ExerciseTemplateAdapter());
-      Hive.registerAdapter(WorkoutPlanAdapter());
-      Hive.registerAdapter(WorkoutSessionAdapter());
-      Hive.registerAdapter(QueuedOperationAdapter());
-
-      print('Database corruption handled successfully');
+      await Hive.close();
     } catch (e) {
-      print('Error during database reset: $e');
-      // Continue anyway - better to have empty database than corrupted one
+      AppLogger.w('Error closing boxes before recovery', error: e);
+    }
+
+    for (final boxName in targetBoxes) {
+      try {
+        await Hive.deleteBoxFromDisk(boxName);
+        AppLogger.i('Deleted Hive box: $boxName');
+      } catch (e) {
+        AppLogger.w('Could not delete Hive box $boxName', error: e);
+      }
+    }
+
+    await init();
+
+    if (restoreBackup && _lastBackupSnapshot != null) {
+      await _restoreFromBackup(_lastBackupSnapshot!);
+    }
+
+    final remainingFailures = await _openAllManagedBoxes();
+    if (remainingFailures.isNotEmpty) {
+      _failedBoxes = remainingFailures;
+      throw Exception(
+        'Recovery incomplete. Failed boxes: ${remainingFailures.join(', ')}',
+      );
     }
   }
 
-  static Future<void> resetDatabase() async {
-    await _handleDatabaseCorruption();
-    await init();
+  static Future<List<String>> _openAllManagedBoxes() async {
+    final failedBoxes = <String>[];
+
+    for (final boxName in _managedBoxes) {
+      try {
+        if (Hive.isBoxOpen(boxName)) {
+          continue;
+        }
+
+        switch (boxName) {
+          case plansBox:
+            await Hive.openBox<WorkoutPlan>(plansBox);
+            break;
+          case sessionsBox:
+            await Hive.openBox<WorkoutSession>(sessionsBox);
+            break;
+          case syncQueueBox:
+            await Hive.openBox<QueuedOperation>(syncQueueBox);
+            break;
+          case plansCacheBox:
+          case sessionsCacheBox:
+            await Hive.openBox(boxName);
+            break;
+        }
+      } catch (e) {
+        AppLogger.e('Failed to open Hive box: $boxName', error: e);
+        failedBoxes.add(boxName);
+      }
+    }
+
+    return failedBoxes;
+  }
+
+  static _HiveBackupSnapshot _createBackupSnapshot() {
+    final plans = Hive.isBoxOpen(plansBox)
+        ? Hive.box<WorkoutPlan>(plansBox)
+            .values
+            .map((plan) => jsonEncode(plan.toJson()))
+            .toList()
+        : <String>[];
+
+    final sessions = Hive.isBoxOpen(sessionsBox)
+        ? Hive.box<WorkoutSession>(sessionsBox)
+            .values
+            .map((session) => jsonEncode(session.toJson()))
+            .toList()
+        : <String>[];
+
+    List<String>? plansCache;
+    if (Hive.isBoxOpen(plansCacheBox)) {
+      final box = Hive.box(plansCacheBox);
+      final raw = box.get('plans');
+      if (raw is List) {
+        plansCache = raw.map((entry) => entry.toString()).toList();
+      }
+    }
+
+    List<String>? sessionsCache;
+    if (Hive.isBoxOpen(sessionsCacheBox)) {
+      final box = Hive.box(sessionsCacheBox);
+      final raw = box.get('sessions');
+      if (raw is List) {
+        sessionsCache = raw.map((entry) => entry.toString()).toList();
+      }
+    }
+
+    final queue = Hive.isBoxOpen(syncQueueBox)
+        ? Hive.box<QueuedOperation>(syncQueueBox)
+            .values
+            .map(
+              (operation) => jsonEncode({
+                'id': operation.id,
+                'action': operation.action,
+                'entity': operation.entity,
+                'payload': operation.payload,
+                'timestamp': operation.timestamp.toIso8601String(),
+                'retryCount': operation.retryCount,
+              }),
+            )
+            .toList()
+        : <String>[];
+
+    return _HiveBackupSnapshot(
+      plansJson: plans,
+      sessionsJson: sessions,
+      plansCacheJson: plansCache,
+      sessionsCacheJson: sessionsCache,
+      queueJson: queue,
+    );
+  }
+
+  static Future<void> _restoreFromBackup(_HiveBackupSnapshot backup) async {
+    if (!backup.hasAnyData) {
+      return;
+    }
+
+    if (Hive.isBoxOpen(plansBox) && backup.plansJson.isNotEmpty) {
+      final box = Hive.box<WorkoutPlan>(plansBox);
+      await box.clear();
+      for (final planJson in backup.plansJson) {
+        await box.add(
+            WorkoutPlan.fromJson(jsonDecode(planJson) as Map<String, dynamic>));
+      }
+    }
+
+    if (Hive.isBoxOpen(sessionsBox) && backup.sessionsJson.isNotEmpty) {
+      final box = Hive.box<WorkoutSession>(sessionsBox);
+      await box.clear();
+      for (final sessionJson in backup.sessionsJson) {
+        await box.add(WorkoutSession.fromJson(
+            jsonDecode(sessionJson) as Map<String, dynamic>));
+      }
+    }
+
+    if (Hive.isBoxOpen(plansCacheBox) && backup.plansCacheJson != null) {
+      await Hive.box(plansCacheBox).put('plans', backup.plansCacheJson);
+    }
+
+    if (Hive.isBoxOpen(sessionsCacheBox) && backup.sessionsCacheJson != null) {
+      await Hive.box(sessionsCacheBox)
+          .put('sessions', backup.sessionsCacheJson);
+    }
+
+    if (Hive.isBoxOpen(syncQueueBox) && backup.queueJson.isNotEmpty) {
+      final queueBox = Hive.box<QueuedOperation>(syncQueueBox);
+      await queueBox.clear();
+      for (final opJson in backup.queueJson) {
+        final map = jsonDecode(opJson) as Map<String, dynamic>;
+        await queueBox.add(
+          QueuedOperation(
+            id: map['id'] as String,
+            action: map['action'] as String,
+            entity: map['entity'] as String,
+            payload: (map['payload'] as Map).cast<String, dynamic>(),
+            timestamp: DateTime.parse(map['timestamp'] as String),
+            retryCount: map['retryCount'] as int? ?? 0,
+          ),
+        );
+      }
+    }
   }
 
   // Workout Plan operations
@@ -115,6 +353,43 @@ class HiveService {
     await _plansBox.deleteAt(index);
   }
 
+  static Future<void> deletePlanByReference(WorkoutPlan plan,
+      {int? fallbackIndex}) async {
+    final planIndex = _plansBox.values.toList().indexWhere((storedPlan) {
+      if (plan.id != null && storedPlan.id != null) {
+        return storedPlan.id == plan.id;
+      }
+
+      if (storedPlan.name != plan.name ||
+          storedPlan.exercises.length != plan.exercises.length) {
+        return false;
+      }
+
+      for (int i = 0; i < storedPlan.exercises.length; i++) {
+        final storedExercise = storedPlan.exercises[i];
+        final targetExercise = plan.exercises[i];
+        if (storedExercise.name != targetExercise.name ||
+            storedExercise.sets != targetExercise.sets ||
+            storedExercise.orderIndex != targetExercise.orderIndex) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    if (planIndex != -1) {
+      await _plansBox.deleteAt(planIndex);
+      return;
+    }
+
+    if (fallbackIndex != null &&
+        fallbackIndex >= 0 &&
+        fallbackIndex < _plansBox.length) {
+      await _plansBox.deleteAt(fallbackIndex);
+    }
+  }
+
   // Workout Session operations
   static Box<WorkoutSession> get _sessionsBox =>
       Hive.box<WorkoutSession>(sessionsBox);
@@ -130,6 +405,30 @@ class HiveService {
 
   static Future<void> deleteSession(int index) async {
     await _sessionsBox.deleteAt(index);
+  }
+
+  static Future<void> deleteSessionByReference(WorkoutSession session,
+      {int? fallbackIndex}) async {
+    final sessionIndex = _sessionsBox.values.toList().indexWhere((stored) {
+      if (session.id != null && stored.id != null) {
+        return stored.id == session.id;
+      }
+
+      return stored.planName.toLowerCase() == session.planName.toLowerCase() &&
+          stored.weekNumber == session.weekNumber &&
+          stored.date.isAtSameMomentAs(session.date);
+    });
+
+    if (sessionIndex != -1) {
+      await _sessionsBox.deleteAt(sessionIndex);
+      return;
+    }
+
+    if (fallbackIndex != null &&
+        fallbackIndex >= 0 &&
+        fallbackIndex < _sessionsBox.length) {
+      await _sessionsBox.deleteAt(fallbackIndex);
+    }
   }
 
   static WorkoutSession? getLastSessionForExercise(String exerciseName) {

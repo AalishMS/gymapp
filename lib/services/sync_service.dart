@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import '../models/queued_operation.dart';
 import '../services/api_service.dart';
 import '../services/sync_queue_service.dart';
+import '../services/app_logger.dart';
 import '../repositories/workout_plan_repository.dart';
 import '../repositories/workout_session_repository.dart';
 
@@ -26,23 +29,25 @@ class SyncService {
     _sessionRepository = sessionRepo;
   }
 
-  bool _isSyncing = false;
-  bool get isSyncing => _isSyncing;
+  Completer<void>? _activeSyncCompleter;
+  bool get isSyncing => _activeSyncCompleter != null;
 
   Future<void> processQueue() async {
-    if (_isSyncing) {
-      print('Sync already in progress, skipping...');
-      return; // Already syncing
+    final activeSync = _activeSyncCompleter;
+    if (activeSync != null) {
+      AppLogger.d('Sync already in progress; waiting for active sync');
+      return activeSync.future;
     }
 
-    _isSyncing = true;
+    final completer = Completer<void>();
+    _activeSyncCompleter = completer;
 
     try {
       final queue = _syncQueueService.getQueue();
-      print('🔄 Starting sync: ${queue.length} operations queued');
+      AppLogger.i('Starting sync with ${queue.length} queued operations');
 
       if (queue.isEmpty) {
-        print('✅ No operations to sync');
+        AppLogger.d('No queued operations to sync');
         return;
       }
 
@@ -50,31 +55,41 @@ class SyncService {
 
       for (final operation in queue) {
         try {
-          print(
-              '🔄 Syncing ${operation.entity}_${operation.action} (${operation.id})');
+          AppLogger.d(
+              'Syncing ${operation.entity}_${operation.action} (${operation.id})');
           await _processOperation(operation);
           await _syncQueueService.removeFromQueue(operation.id);
           successCount++;
-          print(
-              '✅ Successfully synced ${operation.entity}_${operation.action}');
+          AppLogger.d(
+              'Synced ${operation.entity}_${operation.action} successfully');
         } catch (e) {
           // Log error but stop processing on first failure to maintain order
-          print('❌ Sync failed for operation ${operation.id}: $e');
+          AppLogger.e('Sync failed for operation ${operation.id}', error: e);
           break;
         }
       }
 
       final remainingCount = queue.length - successCount;
       if (successCount > 0) {
-        print(
-            '✅ Sync completed: $successCount operations synced, $remainingCount remaining');
+        AppLogger.i(
+            'Sync completed: $successCount operations synced, $remainingCount remaining');
         // After successful partial/full sync, refresh repositories
         await _refreshRepositories();
       } else {
-        print('❌ No operations synced successfully');
+        AppLogger.w('No operations were synced successfully');
       }
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+    } catch (e, stackTrace) {
+      if (!completer.isCompleted) {
+        completer.completeError(e, stackTrace);
+      }
+      rethrow;
     } finally {
-      _isSyncing = false;
+      if (identical(_activeSyncCompleter, completer)) {
+        _activeSyncCompleter = null;
+      }
     }
   }
 
@@ -254,7 +269,7 @@ class SyncService {
         await _sessionRepository!.getSessionsAsync();
       }
     } catch (e) {
-      print('Warning: Failed to refresh repositories after sync: $e');
+      AppLogger.w('Failed to refresh repositories after sync', error: e);
       // Don't throw here as the sync operations themselves were successful
     }
   }

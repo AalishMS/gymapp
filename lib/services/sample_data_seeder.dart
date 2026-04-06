@@ -5,6 +5,7 @@ import '../models/exercise.dart';
 import '../models/set.dart';
 import '../services/hive_service.dart';
 import '../services/cache_service.dart';
+import 'app_logger.dart';
 
 class SampleDataSeeder {
   static Future<void> seedIfEmpty() async {
@@ -986,9 +987,9 @@ class SampleDataSeeder {
       final cacheService = CacheService();
       await cacheService.clearAll();
 
-      print('All data cleared successfully (both Hive and cache)');
+      AppLogger.i('All sample data cleared successfully (Hive and cache)');
     } catch (e) {
-      print('Error clearing data: $e');
+      AppLogger.e('Error clearing sample data', error: e);
       rethrow;
     }
   }

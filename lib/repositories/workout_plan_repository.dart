@@ -6,6 +6,7 @@ import '../services/connectivity_service.dart';
 import '../services/cache_service.dart';
 import '../services/sync_queue_service.dart';
 import '../services/hive_service.dart';
+import '../services/app_logger.dart';
 
 class WorkoutPlanRepository {
   final ApiService _apiService = ApiService();
@@ -26,6 +27,7 @@ class WorkoutPlanRepository {
         if (response.statusCode == 200) {
           final List<dynamic> data = jsonDecode(response.body);
           _cachedPlans = data.map((json) => _planFromJson(json)).toList();
+          _filterPendingDeletedPlans();
 
           // Save to cache
           await _cacheService.savePlans(_cachedPlans);
@@ -33,19 +35,23 @@ class WorkoutPlanRepository {
           return _cachedPlans;
         } else {
           // API returned error status, fall back to cache
-          print('API returned ${response.statusCode}, falling back to cache');
+          AppLogger.w(
+              'Plans API returned ${response.statusCode}; using cached data');
           _cachedPlans = await _cacheService.getPlans();
+          _filterPendingDeletedPlans();
           return _cachedPlans;
         }
       } catch (e) {
         // API call failed (network error, timeout, etc.), fall back to cache
-        print('API call failed: $e, falling back to cache');
+        AppLogger.w('Plans API request failed; using cached data', error: e);
         _cachedPlans = await _cacheService.getPlans();
+        _filterPendingDeletedPlans();
         return _cachedPlans;
       }
     } else {
       // Return cached plans when offline
       _cachedPlans = await _cacheService.getPlans();
+      _filterPendingDeletedPlans();
       return _cachedPlans;
     }
   }
@@ -77,23 +83,42 @@ class WorkoutPlanRepository {
   }
 
   Future<void> deletePlan(int index) async {
-    // 1. Update local cache immediately
-    if (index >= 0 && index < _cachedPlans.length) {
-      _cachedPlans.removeAt(index);
-      await _cacheService.savePlans(_cachedPlans);
+    if (index < 0 || index >= _cachedPlans.length) {
+      return;
     }
+
+    final planToDelete = _cachedPlans[index];
+
+    // 1. Update local cache immediately
+    _cachedPlans.removeAt(index);
+    await _cacheService.savePlans(_cachedPlans);
 
     // 2. Update local Hive storage for compatibility
-    await HiveService.deletePlan(index);
+    await HiveService.deletePlanByReference(planToDelete, fallbackIndex: index);
 
-    // 3. Sync to API in background - don't await
-    // Note: Delete sync would need plan ID, which we don't have in this structure
-    // For now, just handle offline queue if needed
-    final isOnline = await _connectivityService.isOnline();
-    if (!isOnline) {
-      // Queue delete operation if we had plan IDs
-      // await _syncQueueService.addPlanDelete(planId);
+    // 3. Sync delete to API or queue
+    await _syncPlanDeleteToApi(planToDelete);
+  }
+
+  Future<void> _syncPlanDeleteToApi(WorkoutPlan plan) async {
+    if (plan.id == null || plan.id!.isEmpty) {
+      await _syncQueueService.removeQueuedPlanMutations(plan);
+      return;
     }
+
+    final isOnline = await _connectivityService.isOnline();
+    if (isOnline) {
+      try {
+        final response = await _apiService.delete('/plans/${plan.id}');
+        if (response.statusCode == 204 || response.statusCode == 404) {
+          return;
+        }
+      } catch (e) {
+        AppLogger.w('Plan delete API call failed; queuing delete', error: e);
+      }
+    }
+
+    await _syncQueueService.addPlanDelete(plan.id!);
   }
 
   Future<void> _syncPlanToApi(WorkoutPlan plan, String operation) async {
@@ -121,13 +146,13 @@ class WorkoutPlanRepository {
         };
         final response = await _apiService.post('/plans', body);
         if (response.statusCode != 201) {
-          print(
-              'Failed to sync plan to API: ${response.statusCode} ${response.body}');
+          AppLogger.w(
+              'Failed to sync plan create; status=${response.statusCode}');
           // Could optionally queue for retry here
         }
       }
     } catch (e) {
-      print('Error syncing plan to API: $e');
+      AppLogger.e('Error syncing plan to API', error: e);
       // Could optionally queue for retry here
     }
   }
@@ -143,6 +168,17 @@ class WorkoutPlanRepository {
                 orderIndex: e['order_index'],
               ))
           .toList(),
+    );
+  }
+
+  void _filterPendingDeletedPlans() {
+    final pendingDeleteIds = _syncQueueService.getPendingDeleteIds('plan');
+    if (pendingDeleteIds.isEmpty) {
+      return;
+    }
+
+    _cachedPlans.removeWhere(
+      (plan) => plan.id != null && pendingDeleteIds.contains(plan.id),
     );
   }
 }

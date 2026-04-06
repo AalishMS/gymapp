@@ -48,12 +48,14 @@ class WorkoutSession extends HiveObject {
       );
 
   WorkoutSession copyWith({
+    String? id,
     DateTime? date,
     String? planName,
     List<Exercise>? exercises,
     int? weekNumber,
   }) {
     return WorkoutSession(
+      id: id ?? this.id,
       date: date ?? this.date,
       planName: planName ?? this.planName,
       exercises: exercises ?? this.exercises,
