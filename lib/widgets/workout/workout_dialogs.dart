@@ -26,7 +26,8 @@ class _ExerciseSetInput {
 class WorkoutDialogs {
   static void showPRDialog(BuildContext context, List<PRResult> prs) {
     final settings = context.read<SettingsProvider>();
-    final accent = settings.accentColor;
+    final accent = accentColor(context);
+    final onAccent = Theme.of(context).colorScheme.onPrimary;
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -73,7 +74,7 @@ class WorkoutDialogs {
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: accent,
-                    foregroundColor: Colors.black,
+                    foregroundColor: onAccent,
                   ),
                   child: Text('[ ACKNOWLEDGE ]',
                       style: GoogleFonts.jetBrainsMono()),
@@ -90,27 +91,32 @@ class WorkoutDialogs {
     BuildContext context, {
     required void Function(String name, List<gym.Set> sets) onAdd,
   }) {
-    final accent = context.read<SettingsProvider>().accentColor;
+    final accent = accentColor(context);
+    final onAccent = Theme.of(context).colorScheme.onPrimary;
     final setsController = TextEditingController(text: '3');
+    final allSetInputs = <_ExerciseSetInput>[];
+
+    _ExerciseSetInput createSetInput() {
+      final input = _ExerciseSetInput();
+      allSetInputs.add(input);
+      return input;
+    }
+
     String? selectedCategory;
     String? selectedExercise;
     final setInputs = <_ExerciseSetInput>[
-      _ExerciseSetInput(),
-      _ExerciseSetInput(),
-      _ExerciseSetInput(),
+      createSetInput(),
+      createSetInput(),
+      createSetInput(),
     ];
 
     void syncSetInputs(int count) {
       if (count < 1) return;
       if (count > setInputs.length) {
         for (int i = setInputs.length; i < count; i++) {
-          setInputs.add(_ExerciseSetInput());
+          setInputs.add(createSetInput());
         }
       } else if (count < setInputs.length) {
-        final removed = setInputs.sublist(count);
-        for (final input in removed) {
-          input.dispose();
-        }
         setInputs.removeRange(count, setInputs.length);
       }
     }
@@ -361,7 +367,7 @@ class WorkoutDialogs {
                                             style: GoogleFonts.jetBrainsMono(
                                               fontSize: 11,
                                               color: setInput.selectedRpe == rpe
-                                                  ? Colors.black
+                                                  ? onAccent
                                                   : textPrimaryColor(context),
                                             ),
                                           ),
@@ -469,7 +475,7 @@ class WorkoutDialogs {
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: accent,
-                                foregroundColor: Colors.black,
+                                foregroundColor: onAccent,
                               ),
                               child: Text(
                                 '[ ADD ]',
@@ -488,10 +494,12 @@ class WorkoutDialogs {
         );
       },
     ).whenComplete(() {
-      setsController.dispose();
-      for (final setInput in setInputs) {
-        setInput.dispose();
-      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setsController.dispose();
+        for (final setInput in allSetInputs) {
+          setInput.dispose();
+        }
+      });
     });
   }
 

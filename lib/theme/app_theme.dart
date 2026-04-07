@@ -121,6 +121,11 @@ Color errorColor(BuildContext context) {
       const Color(0xFFFF4444);
 }
 
+Color accentColor(BuildContext context) {
+  return Theme.of(context).extension<AppColorScheme>()?.accent ??
+      Theme.of(context).colorScheme.primary;
+}
+
 ThemeData buildTheme(Color accent, Brightness brightness) {
   final isDark = brightness == Brightness.dark;
   final isLightAccent = accent.computeLuminance() > 0.5;
