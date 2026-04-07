@@ -68,4 +68,12 @@ class WorkoutPlanProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void clearLocalState() {
+    _repository.clearCachedPlans();
+    _plans = [];
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
 }

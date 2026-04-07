@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/workout_plan_provider.dart';
+import '../providers/workout_session_provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/workout_plan.dart';
 import '../models/exercise_template.dart';
@@ -176,12 +177,54 @@ class _HomeScreenState extends State<HomeScreen> {
             OutlinedButton(
               onPressed: () async {
                 try {
-                  await SampleDataSeeder.seedSampleData();
-                  provider.loadPlans();
+                  final planProvider = context.read<WorkoutPlanProvider>();
+                  final sessionProvider =
+                      context.read<WorkoutSessionProvider>();
+
+                  final existingPlanNames = planProvider.plans
+                      .map((plan) => plan.name.toLowerCase())
+                      .toSet();
+                  final existingSessionKeys = sessionProvider.sessions
+                      .map((session) =>
+                          '${session.planName.toLowerCase()}::${session.weekNumber}::${session.date.toIso8601String()}')
+                      .toSet();
+
+                  int plansAdded = 0;
+                  int sessionsAdded = 0;
+
+                  for (final plan in SampleDataSeeder.buildSamplePlans()) {
+                    final key = plan.name.toLowerCase();
+                    if (existingPlanNames.contains(key)) {
+                      continue;
+                    }
+
+                    await planProvider.addPlan(plan);
+                    if (planProvider.error == null) {
+                      existingPlanNames.add(key);
+                      plansAdded++;
+                    }
+                  }
+
+                  for (final session
+                      in SampleDataSeeder.buildSampleSessions()) {
+                    final key =
+                        '${session.planName.toLowerCase()}::${session.weekNumber}::${session.date.toIso8601String()}';
+                    if (existingSessionKeys.contains(key)) {
+                      continue;
+                    }
+
+                    await sessionProvider.addSession(session);
+                    if (sessionProvider.error == null) {
+                      existingSessionKeys.add(key);
+                      sessionsAdded++;
+                    }
+                  }
+
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('> Sample data loaded!',
+                        content: Text(
+                            '> Sample data added: $plansAdded plans, $sessionsAdded workouts.',
                             style:
                                 GoogleFonts.jetBrainsMono(color: Colors.black)),
                         backgroundColor: accent,

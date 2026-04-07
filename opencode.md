@@ -17,8 +17,28 @@ Completed:
 - [x] Phase 2G: Offline write queue with auto-sync
 - [x] Phase 3B: Flutter app points to production API URL
 - [x] Phase 4A: Error handling and loading states
+- [x] Phase 4D: Lightweight OTA update check (GitHub Releases APK)
 
 ## Recent Changes
+
+- **Phase 4D completed**: Lightweight OTA update check flow implemented:
+  - Added public backend endpoint `GET /version` in FastAPI (`gymapp_api/app/main.py`) with hardcoded `version`, `apk_url`, and `release_notes`
+  - Added `package_info_plus` and `url_launcher` dependencies in Flutter
+  - Created `UpdateService` (`lib/services/update_service.dart`) to call `/version` and compare semantic versions
+  - Version comparison uses `major.minor.patch` only and ignores build metadata (`+...`)
+  - Integrated update check into `SplashScreen` after auth decision, without blocking navigation
+  - Added terminal-style update dialog (JetBrains Mono, `#0D0D0D`, square corners, outlined buttons)
+  - `Update Now` opens GitHub release APK URL in browser; `Skip` is always allowed (no forced updates)
+  - Update checks fail silently on network/parsing issues to preserve auth flow
+  - First release `v1.0.0` published with `app-release.apk`; backend points to `releases/latest/download/app-release.apk`
+
+- **Post-update UX enhancement completed**: One-time "What's New" dialog added after version upgrades:
+  - Added `WhatsNewService` (`lib/services/whats_new_service.dart`) backed by SharedPreferences
+  - Tracks `last_seen_whats_new_version` and shows changelog once per installed app version
+  - Uses semantic version comparison (`major.minor.patch`) and ignores build metadata
+  - Integrated into SplashScreen flow when no pending OTA update is detected
+  - Dialog uses OpenGym terminal style and displays backend release notes when available
+  - Marks current version as seen after dismissal, preventing repeat prompts on relaunch
 
 - **Phase 4C completed**: Offline mode icon in AppBar implemented across all screens:
   - Created reusable OfflineIndicator widget (lib/widgets/offline_indicator.dart) with terminal aesthetic using wifi-off icon in error color
@@ -57,6 +77,7 @@ Completed:
 
 - Backend is deployed on Azure App Service.
 - Database is Supabase PostgreSQL.
+- APK distribution is via GitHub Releases (sideload install path).
 
 ## Tech Stack
 

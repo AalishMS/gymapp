@@ -18,6 +18,10 @@ class WorkoutSessionRepository {
 
   List<WorkoutSession> get cachedSessions => _cachedSessions;
 
+  void clearCachedSessions() {
+    _cachedSessions = [];
+  }
+
   List<WorkoutSession> getSessions() {
     return _cachedSessions;
   }

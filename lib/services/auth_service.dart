@@ -18,10 +18,13 @@ class AuthResult {
 class AuthService {
   static String get baseUrl => AppConfig.normalizedApiBaseUrl;
   static const String tokenKey = 'auth_token';
+  static const String internetRequiredMessage =
+      'Internet connection is required (Wi-Fi or mobile data).';
   static bool _isApiWarmedUp = false;
 
   static const Duration _requestTimeout = Duration(seconds: 45);
   static const Duration _warmupTimeout = Duration(seconds: 10);
+  static const Duration _internetCheckTimeout = Duration(seconds: 8);
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(
@@ -47,6 +50,11 @@ class AuthService {
   }
 
   Future<AuthResult> register(String email, String password) async {
+    final hasInternet = await _hasInternetAccess();
+    if (!hasInternet) {
+      return AuthResult.error(internetRequiredMessage);
+    }
+
     try {
       final response = await http
           .post(
@@ -80,16 +88,20 @@ class AuthService {
         }
       }
     } on TimeoutException {
-      return AuthResult.error(
-          'Server took too long to respond. Please try again.');
+      return AuthResult.error(internetRequiredMessage);
     } on SocketException {
-      return AuthResult.error('Network error. Check your internet connection.');
+      return AuthResult.error(internetRequiredMessage);
     } catch (e) {
       return AuthResult.error('Network error. Check your connection.');
     }
   }
 
-  Future<bool> login(String email, String password) async {
+  Future<AuthResult> login(String email, String password) async {
+    final hasInternet = await _hasInternetAccess();
+    if (!hasInternet) {
+      return AuthResult.error(internetRequiredMessage);
+    }
+
     try {
       final response = await http
           .post(
@@ -104,11 +116,42 @@ class AuthService {
         final token = data['access_token'] ?? data['token'];
         if (token != null) {
           await _storage.write(key: tokenKey, value: token);
-          return true;
+          return AuthResult.success();
         }
       }
-      return false;
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return AuthResult.error('Invalid credentials');
+      }
+
+      try {
+        final errorData = jsonDecode(response.body);
+        final message =
+            errorData['detail'] as String? ?? 'Login failed. Please try again.';
+        return AuthResult.error(message);
+      } catch (_) {
+        return AuthResult.error('Login failed. Please try again.');
+      }
+    } on TimeoutException {
+      return AuthResult.error(internetRequiredMessage);
+    } on SocketException {
+      return AuthResult.error(internetRequiredMessage);
     } catch (e) {
+      return AuthResult.error('Network error. Check your connection.');
+    }
+  }
+
+  Future<bool> _hasInternetAccess() async {
+    try {
+      final response = await http
+          .get(AppConfig.uriForPath('/health'))
+          .timeout(_internetCheckTimeout);
+      return response.statusCode < 500;
+    } on TimeoutException {
+      return false;
+    } on SocketException {
+      return false;
+    } catch (_) {
       return false;
     }
   }

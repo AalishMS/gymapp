@@ -89,6 +89,18 @@ class WorkoutSessionProvider with ChangeNotifier {
     }
   }
 
+  Future<void> addSession(WorkoutSession session) async {
+    try {
+      _error = null;
+      await _repository.addSession(session);
+      _sessions = _repository.cachedSessions;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+    }
+  }
+
   Future<void> deleteSession(int index) async {
     try {
       _error = null;
@@ -179,5 +191,15 @@ class WorkoutSessionProvider with ChangeNotifier {
         DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
 
     return _sessions.where((s) => s.date.isAfter(startDate)).length;
+  }
+
+  void clearLocalState() {
+    _repository.clearCachedSessions();
+    _sessions = [];
+    _currentSession = null;
+    _currentWeek = 1;
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
   }
 }

@@ -8,6 +8,7 @@ import 'providers/settings_provider.dart';
 import 'services/hive_service.dart';
 import 'services/sync_queue_service.dart';
 import 'services/sync_service.dart';
+import 'services/connectivity_service.dart';
 import 'services/app_logger.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
@@ -52,6 +53,7 @@ class _MyAppState extends State<MyApp> {
   late WorkoutSessionProvider _workoutSessionProvider;
   late ProgressionProvider _progressionProvider;
   late SettingsProvider _settingsProvider;
+  final ConnectivityService _connectivityService = ConnectivityService();
 
   @override
   void initState() {
@@ -83,6 +85,8 @@ class _MyAppState extends State<MyApp> {
       _workoutPlanProvider.repository,
       _workoutSessionProvider.repository,
     );
+
+    _connectivityService.startListening();
 
     await Future.delayed(const Duration(milliseconds: 100));
 

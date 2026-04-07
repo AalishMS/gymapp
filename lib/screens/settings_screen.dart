@@ -5,7 +5,10 @@ import '../providers/settings_provider.dart';
 import '../providers/workout_plan_provider.dart';
 import '../providers/workout_session_provider.dart';
 import '../services/auth_service.dart';
+import '../services/cache_service.dart';
+import '../services/hive_service.dart';
 import '../services/sample_data_seeder.dart';
+import '../services/sync_queue_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/offline_indicator.dart';
 
@@ -532,7 +535,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'This will clear all existing data and load fresh sample plans and workouts.',
+                'This adds realistic sample plans and workouts on top of your existing data.',
                 style: GoogleFonts.jetBrainsMono(
                     fontSize: 12, color: textSecondary),
               ),
@@ -550,14 +553,56 @@ class SettingsScreen extends StatelessWidget {
                     onPressed: () async {
                       Navigator.pop(ctx);
                       try {
-                        await SampleDataSeeder.clearAllData();
-                        await SampleDataSeeder.seedSampleData();
+                        final planProvider =
+                            context.read<WorkoutPlanProvider>();
+                        final sessionProvider =
+                            context.read<WorkoutSessionProvider>();
+
+                        final existingPlanNames = planProvider.plans
+                            .map((plan) => plan.name.toLowerCase())
+                            .toSet();
+                        final existingSessionKeys = sessionProvider.sessions
+                            .map((session) =>
+                                '${session.planName.toLowerCase()}::${session.weekNumber}::${session.date.toIso8601String()}')
+                            .toSet();
+
+                        int plansAdded = 0;
+                        int sessionsAdded = 0;
+
+                        for (final plan
+                            in SampleDataSeeder.buildSamplePlans()) {
+                          final key = plan.name.toLowerCase();
+                          if (existingPlanNames.contains(key)) {
+                            continue;
+                          }
+
+                          await planProvider.addPlan(plan);
+                          if (planProvider.error == null) {
+                            existingPlanNames.add(key);
+                            plansAdded++;
+                          }
+                        }
+
+                        for (final session
+                            in SampleDataSeeder.buildSampleSessions()) {
+                          final key =
+                              '${session.planName.toLowerCase()}::${session.weekNumber}::${session.date.toIso8601String()}';
+                          if (existingSessionKeys.contains(key)) {
+                            continue;
+                          }
+
+                          await sessionProvider.addSession(session);
+                          if (sessionProvider.error == null) {
+                            existingSessionKeys.add(key);
+                            sessionsAdded++;
+                          }
+                        }
+
                         if (context.mounted) {
-                          context.read<WorkoutPlanProvider>().loadPlans();
-                          context.read<WorkoutSessionProvider>().loadSessions();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('> Sample data refreshed!',
+                              content: Text(
+                                  '> Sample data added: $plansAdded plans, $sessionsAdded workouts.',
                                   style: GoogleFonts.jetBrainsMono()),
                               backgroundColor: accent,
                             ),
@@ -637,18 +682,38 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () async {
-                      await SampleDataSeeder.clearAllData();
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (context.mounted) {
-                        context.read<WorkoutPlanProvider>().loadPlans();
-                        context.read<WorkoutSessionProvider>().loadSessions();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('> All data cleared',
-                                style: GoogleFonts.jetBrainsMono()),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
+                      if (ctx.mounted) {
+                        Navigator.pop(ctx);
+                      }
+
+                      try {
+                        await SampleDataSeeder.clearAllData();
+                        if (context.mounted) {
+                          context.read<WorkoutPlanProvider>().clearLocalState();
+                          context
+                              .read<WorkoutSessionProvider>()
+                              .clearLocalState();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  '> All data cleared. Server wipe runs in background.',
+                                  style: GoogleFonts.jetBrainsMono()),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '> Failed to clear data: ${e.toString().replaceFirst('Exception: ', '')}',
+                                style: GoogleFonts.jetBrainsMono(),
+                              ),
+                              backgroundColor: errorColor(context),
+                            ),
+                          );
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -769,6 +834,18 @@ class SettingsScreen extends StatelessWidget {
                   ElevatedButton(
                     onPressed: () async {
                       await AuthService().logout();
+                      await CacheService().clearAll();
+                      await HiveService.clearAllPlans();
+                      await HiveService.clearAllSessions();
+                      await SyncQueueService.instance.clearQueue();
+
+                      if (context.mounted) {
+                        context.read<WorkoutPlanProvider>().clearLocalState();
+                        context
+                            .read<WorkoutSessionProvider>()
+                            .clearLocalState();
+                      }
+
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (context.mounted) {
                         Navigator.pushNamedAndRemoveUntil(

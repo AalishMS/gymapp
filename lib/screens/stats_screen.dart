@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../models/workout_session.dart';
+import '../providers/workout_session_provider.dart';
 import '../providers/settings_provider.dart';
-import '../repositories/stats_repository.dart';
-import '../repositories/workout_session_repository.dart';
+import '../services/cache_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/weight_utils.dart';
 import '../widgets/offline_indicator.dart';
@@ -18,12 +19,12 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
-  final StatsRepository _statsRepo = StatsRepository();
-  final WorkoutSessionRepository _sessionRepo = WorkoutSessionRepository();
+  final CacheService _cacheService = CacheService();
   String? _selectedExercise;
   List<String> _exerciseNames = [];
   bool _showOverall = true;
   bool _isLoading = true;
+  List<WorkoutSession> _sessions = [];
 
   // Cache for stats data
   Map<int, int> _workoutFrequency = {};
@@ -40,45 +41,123 @@ class _StatsScreenState extends State<StatsScreen> {
 
   Future<void> _loadStatsData() async {
     try {
-      final exerciseNames = await _statsRepo.getAllExerciseNames();
-      final workoutFrequency = await _statsRepo.getWorkoutFrequency(8);
-      final exercisePRs = await _statsRepo.getAllExercisePRs();
-      final workoutsThisWeek = await _statsRepo.getWorkoutsThisWeek();
-      final sessions = await _sessionRepo.getSessionsAsync();
+      final sessionProvider = context.read<WorkoutSessionProvider>();
+      var sessions = List<WorkoutSession>.from(sessionProvider.sessions);
 
+      if (sessions.isEmpty) {
+        sessions = await _cacheService.getSessions();
+      }
+
+      sessions.sort((a, b) => b.date.compareTo(a.date));
+
+      final now = DateTime.now();
+      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+      final startDate =
+          DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+
+      final workoutFrequency = <int, int>{};
+      for (int i = 0; i < 8; i++) {
+        workoutFrequency[i] = 0;
+      }
+
+      final exercisePRs = <String, double>{};
+
+      for (final session in sessions) {
+        final daysDiff = now.difference(session.date).inDays;
+        final weekIndex = daysDiff ~/ 7;
+        if (weekIndex >= 0 && weekIndex < 8) {
+          workoutFrequency[weekIndex] = (workoutFrequency[weekIndex] ?? 0) + 1;
+        }
+
+        for (final exercise in session.exercises) {
+          final currentPR = exercisePRs[exercise.name] ?? 0.0;
+          double maxWeightInSession = 0;
+          for (final set in exercise.sets) {
+            if (set.weight > maxWeightInSession) {
+              maxWeightInSession = set.weight;
+            }
+          }
+          if (maxWeightInSession > currentPR) {
+            exercisePRs[exercise.name] = maxWeightInSession;
+          }
+        }
+      }
+
+      final exerciseNames = exercisePRs.keys.toList()..sort();
+      final workoutsThisWeek =
+          sessions.where((s) => s.date.isAfter(startDate)).length;
+
+      String? selectedExercise = _selectedExercise;
+      if (exerciseNames.isNotEmpty) {
+        if (selectedExercise == null ||
+            !exerciseNames.contains(selectedExercise)) {
+          selectedExercise = exerciseNames.first;
+        }
+      } else {
+        selectedExercise = null;
+      }
+
+      final selectedExerciseProgression =
+          _buildExerciseProgression(sessions, selectedExercise);
+
+      if (!mounted) return;
       setState(() {
+        _sessions = sessions;
         _exerciseNames = exerciseNames;
         _workoutFrequency = workoutFrequency;
         _exercisePRs = exercisePRs;
         _totalWorkouts = sessions.length;
         _workoutsThisWeek = workoutsThisWeek;
+        _selectedExercise = selectedExercise;
+        _selectedExerciseProgression = selectedExerciseProgression;
         _isLoading = false;
-
-        if (_exerciseNames.isNotEmpty) {
-          _selectedExercise = _exerciseNames.first;
-          _loadSelectedExerciseProgression();
-        }
       });
     } catch (e) {
       AppLogger.e('Error loading stats data', error: e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _loadSelectedExerciseProgression() async {
-    if (_selectedExercise == null) return;
-
-    try {
-      final progression =
-          await _statsRepo.getExerciseProgression(_selectedExercise!);
-      setState(() {
-        _selectedExerciseProgression = progression;
-      });
-    } catch (e) {
-      AppLogger.e('Error loading progression data', error: e);
+  List<Map<String, dynamic>> _buildExerciseProgression(
+      List<WorkoutSession> sessions, String? exerciseName) {
+    if (exerciseName == null) {
+      return [];
     }
+
+    final progression = <Map<String, dynamic>>[];
+
+    for (final session in sessions) {
+      for (final exercise in session.exercises) {
+        if (exercise.name.toLowerCase() != exerciseName.toLowerCase() ||
+            exercise.sets.isEmpty) {
+          continue;
+        }
+
+        double maxWeight = 0;
+        int totalVolume = 0;
+
+        for (final set in exercise.sets) {
+          if (set.weight > maxWeight) {
+            maxWeight = set.weight;
+          }
+          totalVolume += (set.weight * set.reps).round();
+        }
+
+        progression.add({
+          'date': session.date,
+          'maxWeight': maxWeight,
+          'totalVolume': totalVolume,
+          'week': session.weekNumber,
+        });
+      }
+    }
+
+    progression.sort(
+        (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+    return progression;
   }
 
   @override
@@ -256,8 +335,9 @@ class _StatsScreenState extends State<StatsScreen> {
       onChanged: (value) {
         setState(() {
           _selectedExercise = value;
+          _selectedExerciseProgression =
+              _buildExerciseProgression(_sessions, _selectedExercise);
         });
-        _loadSelectedExerciseProgression();
       },
     );
   }

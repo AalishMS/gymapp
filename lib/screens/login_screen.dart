@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/workout_plan_provider.dart';
+import '../providers/workout_session_provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
@@ -16,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _authService = AuthService();
 
   bool _isLoading = false;
+  bool _isPasswordVisible = false;
   String? _errorMessage;
 
   @override
@@ -44,18 +48,27 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final success = await _authService.login(email, password);
+    final result = await _authService.login(email, password);
 
     if (mounted) {
       setState(() {
         _isLoading = false;
       });
 
-      if (success) {
+      if (result.success) {
+        final planProvider = context.read<WorkoutPlanProvider>();
+        final sessionProvider = context.read<WorkoutSessionProvider>();
+
+        planProvider.clearLocalState();
+        sessionProvider.clearLocalState();
+
+        planProvider.loadPlans();
+        sessionProvider.loadSessions();
+
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         setState(() {
-          _errorMessage = 'Invalid credentials';
+          _errorMessage = result.errorMessage ?? 'Login failed';
         });
       }
     }
@@ -107,7 +120,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       _buildTextField(
                         controller: _passwordController,
                         hintText: 'enter password',
-                        obscureText: true,
+                        obscureText: !_isPasswordVisible,
+                        showVisibilityToggle: true,
+                        isTextVisible: _isPasswordVisible,
+                        onToggleVisibility: () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
                         textPrimary: textPrimary,
                         border: border,
                         accent: accent,
@@ -204,6 +224,9 @@ class _LoginScreenState extends State<LoginScreen> {
     required TextEditingController controller,
     required String hintText,
     bool obscureText = false,
+    bool showVisibilityToggle = false,
+    bool isTextVisible = false,
+    VoidCallback? onToggleVisibility,
     required Color textPrimary,
     required Color border,
     required Color accent,
@@ -232,6 +255,18 @@ class _LoginScreenState extends State<LoginScreen> {
           borderRadius: BorderRadius.zero,
           borderSide: BorderSide(color: accent, width: 1),
         ),
+        suffixIcon: showVisibilityToggle
+            ? IconButton(
+                onPressed: onToggleVisibility,
+                icon: Icon(
+                  isTextVisible
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  size: 18,
+                  color: textPrimary.withAlpha(153),
+                ),
+              )
+            : null,
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import '../models/queued_operation.dart';
 import '../services/api_service.dart';
@@ -116,8 +117,69 @@ class SyncService {
       case 'SESSION_DELETE':
         await _processSessionDelete(operation.payload);
         break;
+      case 'DATA_WIPE_ALL':
+        await _processDataWipeAll();
+        break;
       default:
         throw Exception('Unknown operation: $operationKey');
+    }
+  }
+
+  Future<void> _processDataWipeAll() async {
+    final sessionsResponse = await _apiService.get('/sessions');
+    if (sessionsResponse.statusCode != 200) {
+      throw Exception(
+          'Failed to fetch sessions for wipe: ${sessionsResponse.statusCode} ${sessionsResponse.body}');
+    }
+
+    final sessionsData = jsonDecode(sessionsResponse.body) as List<dynamic>;
+    for (final session in sessionsData) {
+      final sessionMap = session as Map<String, dynamic>;
+      final sessionId = sessionMap['id']?.toString();
+      if (sessionId == null || sessionId.isEmpty) {
+        continue;
+      }
+
+      try {
+        final deleteResponse = await _apiService.delete('/sessions/$sessionId');
+        if (deleteResponse.statusCode != 204 &&
+            deleteResponse.statusCode != 404) {
+          throw Exception(
+              'Failed to delete session: ${deleteResponse.statusCode} ${deleteResponse.body}');
+        }
+      } catch (e) {
+        if (!e.toString().contains('404')) {
+          rethrow;
+        }
+      }
+    }
+
+    final plansResponse = await _apiService.get('/plans');
+    if (plansResponse.statusCode != 200) {
+      throw Exception(
+          'Failed to fetch plans for wipe: ${plansResponse.statusCode} ${plansResponse.body}');
+    }
+
+    final plansData = jsonDecode(plansResponse.body) as List<dynamic>;
+    for (final plan in plansData) {
+      final planMap = plan as Map<String, dynamic>;
+      final planId = planMap['id']?.toString();
+      if (planId == null || planId.isEmpty) {
+        continue;
+      }
+
+      try {
+        final deleteResponse = await _apiService.delete('/plans/$planId');
+        if (deleteResponse.statusCode != 204 &&
+            deleteResponse.statusCode != 404) {
+          throw Exception(
+              'Failed to delete plan: ${deleteResponse.statusCode} ${deleteResponse.body}');
+        }
+      } catch (e) {
+        if (!e.toString().contains('404')) {
+          rethrow;
+        }
+      }
     }
   }
 

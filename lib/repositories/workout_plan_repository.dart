@@ -19,6 +19,10 @@ class WorkoutPlanRepository {
   // Getter for cached plans
   List<WorkoutPlan> get cachedPlans => _cachedPlans;
 
+  void clearCachedPlans() {
+    _cachedPlans = [];
+  }
+
   Future<List<WorkoutPlan>> getPlans() async {
     final isOnline = await _connectivityService.isOnline();
 
@@ -27,7 +31,17 @@ class WorkoutPlanRepository {
         final response = await _apiService.get('/plans');
         if (response.statusCode == 200) {
           final List<dynamic> data = jsonDecode(response.body);
-          _cachedPlans = data.map((json) => _planFromJson(json)).toList();
+          final localPlans = await _cacheService.getPlans();
+          final localSetDefaultsMap = _buildSetDefaultsMap(localPlans);
+
+          _cachedPlans = data
+              .map(
+                (json) => _planFromJson(
+                  json,
+                  localSetDefaultsMap: localSetDefaultsMap,
+                ),
+              )
+              .toList();
           _filterPendingDeletedPlans();
 
           // Save to cache
@@ -167,28 +181,71 @@ class WorkoutPlanRepository {
     }
   }
 
-  WorkoutPlan _planFromJson(Map<String, dynamic> json) {
+  WorkoutPlan _planFromJson(
+    Map<String, dynamic> json, {
+    required Map<String, List<gym.Set>> localSetDefaultsMap,
+  }) {
+    final planName = json['name'] as String;
+
     return WorkoutPlan(
       id: json['id']?.toString(),
-      name: json['name'] as String,
-      exercises: (json['exercises'] as List<dynamic>? ?? const [])
-          .map((e) => ExerciseTemplate(
-                id: e['id']?.toString(),
-                name: (e['name'] ?? e['exercise_name']) as String,
-                sets: e['sets'] as int?,
-                orderIndex: e['order_index'] as int? ?? 0,
-                setDefaults: (e['set_defaults'] as List<dynamic>?)
-                    ?.map((s) => gym.Set(
-                          id: s['id']?.toString(),
-                          reps: s['reps'] as int,
-                          weight: (s['weight'] as num).toDouble(),
-                          rpe: s['rpe'] as int?,
-                          note: s['note'] as String?,
-                        ))
-                    .toList(),
-              ))
-          .toList(),
+      name: planName,
+      exercises: (json['exercises'] as List<dynamic>? ?? const []).map((e) {
+        final exerciseName = (e['name'] ?? e['exercise_name']) as String;
+        final exerciseKey =
+            '${planName.toLowerCase()}::${exerciseName.toLowerCase()}';
+
+        final rawSetDefaults = (e['set_defaults'] as List<dynamic>?) ??
+            (e['setDefaults'] as List<dynamic>?);
+
+        final parsedSetDefaults = rawSetDefaults
+            ?.map((s) => gym.Set(
+                  id: s['id']?.toString(),
+                  reps: s['reps'] as int,
+                  weight: (s['weight'] as num).toDouble(),
+                  rpe: s['rpe'] as int?,
+                  note: s['note'] as String?,
+                ))
+            .toList();
+
+        final resolvedSetDefaults =
+            (parsedSetDefaults != null && parsedSetDefaults.isNotEmpty)
+                ? parsedSetDefaults
+                : localSetDefaultsMap[exerciseKey];
+
+        return ExerciseTemplate(
+          id: e['id']?.toString(),
+          name: exerciseName,
+          sets: e['sets'] as int?,
+          orderIndex: e['order_index'] as int? ?? 0,
+          setDefaults: resolvedSetDefaults,
+        );
+      }).toList(),
     );
+  }
+
+  Map<String, List<gym.Set>> _buildSetDefaultsMap(List<WorkoutPlan> plans) {
+    final map = <String, List<gym.Set>>{};
+
+    for (final plan in plans) {
+      final planName = plan.name.toLowerCase();
+      for (final exercise in plan.exercises) {
+        if (exercise.setDefaults.isEmpty) {
+          continue;
+        }
+
+        map['$planName::${exercise.name.toLowerCase()}'] = exercise.setDefaults
+            .map((setData) => gym.Set(
+                  reps: setData.reps,
+                  weight: setData.weight,
+                  rpe: setData.rpe,
+                  note: setData.note,
+                ))
+            .toList();
+      }
+    }
+
+    return map;
   }
 
   void _filterPendingDeletedPlans() {

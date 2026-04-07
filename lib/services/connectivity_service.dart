@@ -12,6 +12,7 @@ class ConnectivityService {
   final StreamController<bool> _connectivityController =
       StreamController<bool>.broadcast();
   final SyncService _syncService = SyncService.instance;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   bool _wasOffline = false;
 
@@ -49,7 +50,12 @@ class ConnectivityService {
   }
 
   void startListening() {
-    _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
+    if (_connectivitySubscription != null) {
+      return;
+    }
+
+    _connectivitySubscription =
+        _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
     isOnline().then((online) {
       _connectivityController.add(online);
       _wasOffline = !online;
@@ -57,6 +63,8 @@ class ConnectivityService {
   }
 
   void dispose() {
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
     _connectivityController.close();
   }
 }

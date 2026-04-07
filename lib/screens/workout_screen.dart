@@ -32,7 +32,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   List<int> _weeks = [1];
   int _currentWeekIndex = 0;
   final Map<int, WorkoutSession> _weekSessions = {};
+  final Set<int> _dirtyWeeks = <int>{};
   final ScrollController _weekNavScrollController = ScrollController();
+  bool _isHandlingPop = false;
 
   // Debounced autosave
   Timer? _autosaveDebounceTimer;
@@ -65,16 +67,20 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   void _loadWeeks() {
     final sessionProvider = context.read<WorkoutSessionProvider>();
     final existingWeeks = sessionProvider.getWeeksForPlan(widget.plan.name);
-    if (existingWeeks.isEmpty) {
-      _weeks = [1];
-    } else {
-      _weeks = existingWeeks;
-      int maxWeek = _weeks.reduce((a, b) => a > b ? a : b);
-      if (!_weeks.contains(maxWeek + 1)) {
-        _weeks.add(maxWeek + 1);
-      }
+
+    final loadedWeeks =
+        existingWeeks.isEmpty ? <int>[1] : List<int>.from(existingWeeks);
+    if (!loadedWeeks.contains(1)) {
+      loadedWeeks.insert(0, 1);
     }
-    _currentWeekIndex = _weeks.length - 1;
+    final selectedWeek =
+        existingWeeks.isEmpty ? loadedWeeks.first : existingWeeks.last;
+
+    setState(() {
+      _weeks = loadedWeeks;
+      _currentWeekIndex = _weeks.indexOf(selectedWeek);
+    });
+
     _loadSessionForCurrentWeek();
   }
 
@@ -126,15 +132,27 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   Future<void> _addNewWeek() async {
     final previousWeek = _currentWeek;
     await _saveWeek(previousWeek);
-    final lastWeek = _weeks.last;
+    final nextWeek = _nextWeekNumber();
     if (!mounted) return;
     setState(() {
-      _weeks.add(lastWeek + 1);
+      _weeks.add(nextWeek);
       _currentWeekIndex = _weeks.length - 1;
     });
+
+    _getOrCreateSession();
+    await _saveWeek(_currentWeek, force: true);
   }
 
-  Future<void> _saveWeek(int week) async {
+  int _nextWeekNumber() {
+    if (_weeks.isEmpty) {
+      return 1;
+    }
+
+    final maxWeek = _weeks.reduce((a, b) => a > b ? a : b);
+    return maxWeek + 1;
+  }
+
+  Future<void> _saveWeek(int week, {bool force = false}) async {
     _autosaveDebounceTimer?.cancel();
     _hasPendingSave = false;
 
@@ -143,8 +161,16 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       return;
     }
 
+    final sessionProvider = context.read<WorkoutSessionProvider>();
+    final existingSession =
+        sessionProvider.getSessionForPlanAndWeek(widget.plan.name, week);
+    final isDirty = _dirtyWeeks.contains(week);
+    if (!force && existingSession == null && !isDirty) {
+      return;
+    }
+
     final hasSets = session.exercises.any((e) => e.sets.isNotEmpty);
-    if (!hasSets) {
+    if (!force && !hasSets) {
       return;
     }
 
@@ -155,13 +181,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         }
       });
 
-      final sessionProvider = context.read<WorkoutSessionProvider>();
       sessionProvider.startWorkout(
         session.planName,
         session.exercises,
         weekNumber: week,
       );
       await sessionProvider.saveWorkout();
+      _dirtyWeeks.remove(week);
     } catch (e) {
       if (mounted) {
         final settings = context.read<SettingsProvider>();
@@ -205,6 +231,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   // Background save operation - never blocks UI
   Future<void> _performSave() async {
     await _saveWeek(_currentWeek);
+  }
+
+  Future<void> _handlePop() async {
+    if (_isHandlingPop) {
+      return;
+    }
+
+    _isHandlingPop = true;
+    await _performSaveImmediate();
+    if (!mounted) {
+      return;
+    }
+    Navigator.pop(context);
   }
 
   // Show PR celebration as non-blocking banner instead of dialog
@@ -340,6 +379,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   void _updateSession(WorkoutSession session) {
     _weekSessions[_currentWeek] = session;
+    _dirtyWeeks.add(_currentWeek);
     if (mounted) {
       setState(() {});
     }
@@ -707,151 +747,158 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final settings = context.watch<SettingsProvider>();
     final accent = settings.accentColor;
 
-    return Scaffold(
-      backgroundColor: backgroundColor(context),
-      appBar: AppBar(
-        backgroundColor: surfaceColor(context),
-        toolbarHeight: 60,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: accent),
-          onPressed: () {
-            _autoSave();
-            Navigator.pop(context);
-          },
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop || _isHandlingPop) {
+          return;
+        }
+        _handlePop();
+      },
+      child: Scaffold(
+        backgroundColor: backgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: surfaceColor(context),
+          toolbarHeight: 60,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: accent),
+            onPressed: _handlePop,
+          ),
+          actions: [
+            const OfflineIndicator(),
+          ],
+          bottom: _buildPlanTabBar(accent),
         ),
-        actions: [
-          const OfflineIndicator(),
-        ],
-        bottom: _buildPlanTabBar(accent),
-      ),
-      body: Column(
-        children: [
-          _PlanHeader(
-            planName: widget.plan.name,
-            planIndex: widget.planIndex,
-            accent: accent,
-          ),
-          // Add loading indicator for session provider
-          Consumer<WorkoutSessionProvider>(
-            builder: (context, sessionProvider, child) {
-              if (sessionProvider.isLoading) {
-                return Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: accent.withAlpha(26),
-                    border: Border(bottom: BorderSide(color: accent, width: 1)),
-                  ),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(accent),
+        body: Column(
+          children: [
+            _PlanHeader(
+              planName: widget.plan.name,
+              planIndex: widget.planIndex,
+              accent: accent,
+            ),
+            // Add loading indicator for session provider
+            Consumer<WorkoutSessionProvider>(
+              builder: (context, sessionProvider, child) {
+                if (sessionProvider.isLoading) {
+                  return Container(
+                    width: double.infinity,
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: accent.withAlpha(26),
+                      border:
+                          Border(bottom: BorderSide(color: accent, width: 1)),
+                    ),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(accent),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '> LOADING SESSION DATA...',
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: accent,
+                        const SizedBox(width: 8),
+                        Text(
+                          '> LOADING SESSION DATA...',
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: accent,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-              return const SizedBox.shrink();
-            },
-          ),
-          Expanded(
-            child: _GestureClaimingContainer(
-              onSwipeLeft: _currentWeekIndex < _weeks.length - 1
-                  ? () => _onWeekChanged(_currentWeekIndex + 1)
-                  : null,
-              onSwipeRight: _currentWeekIndex > 0
-                  ? () => _onWeekChanged(_currentWeekIndex - 1)
-                  : null,
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics()),
-                slivers: [
-                  SliverReorderableList(
-                    itemCount: session.exercises.length + 1,
-                    onReorder: _reorderExercises,
-                    proxyDecorator: (child, index, animation) {
-                      return Material(
-                        color: surfaceColor(context),
-                        borderRadius: BorderRadius.zero,
-                        child: child,
-                      );
-                    },
-                    itemBuilder: (context, index) {
-                      if (index == session.exercises.length) {
-                        return ReorderableDelayedDragStartListener(
-                          key: const ValueKey('add_exercise_button'),
-                          index: index,
-                          child: InkWell(
-                            onTap: _addEmptyExercise,
-                            child: Container(
-                              margin: const EdgeInsets.all(8),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: accent, width: 1),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '[ + ADD EXERCISE ]',
-                                  style:
-                                      GoogleFonts.jetBrainsMono(color: accent),
+                      ],
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+            Expanded(
+              child: _GestureClaimingContainer(
+                onSwipeLeft: _currentWeekIndex < _weeks.length - 1
+                    ? () => _onWeekChanged(_currentWeekIndex + 1)
+                    : null,
+                onSwipeRight: _currentWeekIndex > 0
+                    ? () => _onWeekChanged(_currentWeekIndex - 1)
+                    : null,
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics()),
+                  slivers: [
+                    SliverReorderableList(
+                      itemCount: session.exercises.length + 1,
+                      onReorder: _reorderExercises,
+                      proxyDecorator: (child, index, animation) {
+                        return Material(
+                          color: surfaceColor(context),
+                          borderRadius: BorderRadius.zero,
+                          child: child,
+                        );
+                      },
+                      itemBuilder: (context, index) {
+                        if (index == session.exercises.length) {
+                          return ReorderableDelayedDragStartListener(
+                            key: const ValueKey('add_exercise_button'),
+                            index: index,
+                            child: InkWell(
+                              onTap: _addEmptyExercise,
+                              child: Container(
+                                margin: const EdgeInsets.all(8),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: accent, width: 1),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '[ + ADD EXERCISE ]',
+                                    style: GoogleFonts.jetBrainsMono(
+                                        color: accent),
+                                  ),
                                 ),
                               ),
                             ),
+                          );
+                        }
+
+                        final exercise = session.exercises[index];
+
+                        return ReorderableDelayedDragStartListener(
+                          key: ValueKey(index),
+                          index: index,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: surfaceColor(context),
+                              border: Border.all(
+                                  color: borderColor(context), width: 1),
+                            ),
+                            child: ExerciseCard(
+                              exercise: exercise,
+                              exerciseIndex: index,
+                              accent: accent,
+                              onIncrementReps: _incrementReps,
+                              onDecrementReps: _decrementReps,
+                              onIncrementWeight: _incrementWeight,
+                              onDecrementWeight: _decrementWeight,
+                              onAddSet: (i) => _addSet(i),
+                              onEditSet: (i, setIndex) => _editSet(i, setIndex),
+                              onAddNote: _addExerciseNote,
+                              onRename: _showExerciseRenameDialog,
+                              onDeleteExercise: _deleteExercise,
+                            ),
                           ),
                         );
-                      }
-
-                      final exercise = session.exercises[index];
-
-                      return ReorderableDelayedDragStartListener(
-                        key: ValueKey(index),
-                        index: index,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: surfaceColor(context),
-                            border: Border.all(
-                                color: borderColor(context), width: 1),
-                          ),
-                          child: ExerciseCard(
-                            exercise: exercise,
-                            exerciseIndex: index,
-                            accent: accent,
-                            onIncrementReps: _incrementReps,
-                            onDecrementReps: _decrementReps,
-                            onIncrementWeight: _incrementWeight,
-                            onDecrementWeight: _decrementWeight,
-                            onAddSet: (i) => _addSet(i),
-                            onEditSet: (i, setIndex) => _editSet(i, setIndex),
-                            onAddNote: _addExerciseNote,
-                            onRename: _showExerciseRenameDialog,
-                            onDeleteExercise: _deleteExercise,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          _buildWeekNavBar(),
-        ],
+            _buildWeekNavBar(),
+          ],
+        ),
       ),
     );
   }
@@ -952,7 +999,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                             decoration: BoxDecoration(
                               border: Border.all(color: accent),
                             ),
-                            child: Text('[+ WEEK ${_weeks.length + 1}]',
+                            child: Text('[+ WEEK ${_nextWeekNumber()}]',
                                 style: GoogleFonts.jetBrainsMono(
                                     fontSize: 10, color: accent)),
                           ),

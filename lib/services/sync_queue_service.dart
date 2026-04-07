@@ -197,11 +197,25 @@ class SyncQueueService {
     await addToQueue('delete', 'session', {'id': sessionId});
   }
 
+  Future<void> addDataWipeAll() async {
+    if (_hasQueuedDataWipeAll()) {
+      return;
+    }
+    await addToQueue('wipe_all', 'data', const {});
+  }
+
   bool _hasQueuedDelete(String entity, String id) {
     return _queueBox.values.any((operation) =>
         operation.entity == entity &&
         operation.action == 'delete' &&
         operation.payload['id'] == id);
+  }
+
+  bool _hasQueuedDataWipeAll() {
+    return _queueBox.values.any(
+      (operation) =>
+          operation.entity == 'data' && operation.action == 'wipe_all',
+    );
   }
 
   bool _matchesPlanPayload(Map<String, dynamic> payload, WorkoutPlan plan) {

@@ -36,3 +36,12 @@ app.include_router(auth.router)
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+@app.get("/version")
+async def app_version():
+    return {
+        "version": "1.0.0",
+        "apk_url": "https://github.com/AalishMS/gymapp/releases/latest/download/app-release.apk",
+        "release_notes": "Initial public sideload release.",
+    }
