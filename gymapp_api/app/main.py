@@ -41,7 +41,7 @@ async def health_check():
 @app.get("/version")
 async def app_version():
     return {
-        "version": "1.0.0",
+        "version": "1.0.1",
         "apk_url": "https://github.com/AalishMS/gymapp/releases/latest/download/app-release.apk",
-        "release_notes": "Initial public sideload release.",
+        "release_notes": "Fix workout dialog crashes, improve startup stability, and polish themed dialogs.",
     }
